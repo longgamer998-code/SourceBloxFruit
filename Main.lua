@@ -12,13 +12,13 @@
 ]]
 
 --============================================
--- CONFIGURATION - THAY ĐỔI LINK CỦA BẠN Ở ĐÂY
+-- CONFIGURATION - LINK GITHUB
 --============================================
 local Config = {
-    -- Raw links cho từng module (Github, Pastebin, etc.)
-    DataModuleURL = "YOUR_RAW_LINK/BloxFruitsData.lua",
-    FunctionsModuleURL = "YOUR_RAW_LINK/AutoFarmFunctions.lua", 
-    GUIModuleURL = "YOUR_RAW_LINK/AutoFarmGUI.lua",
+    -- Raw links cho từng module
+    DataModuleURL = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/refs/heads/main/BloxFruitsData.lua",
+    FunctionsModuleURL = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/refs/heads/main/AutoFarmFunctions.lua", 
+    GUIModuleURL = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/refs/heads/main/AutoFarmPro.lua",
     
     -- Debug mode - hiển thị log
     Debug = true,
