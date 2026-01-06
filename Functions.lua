@@ -1,5 +1,5 @@
 --[[
-    FUNCTIONS MODULE - Auto Farm
+    FUNCTIONS MODULE - Auto Farm theo Level + Teleport đảo đúng
 ]]
 
 local Functions = {}
@@ -49,6 +49,13 @@ function Functions.GetSea()
 end
 
 --=== TELEPORT ===--
+function Functions.TeleportTo(cframe)
+    local hrp = Functions.GetHRP()
+    if hrp then
+        hrp.CFrame = cframe + Vector3.new(0, 10, 0)
+    end
+end
+
 function Functions.TeleportToMob(mob)
     local mobHRP = mob:FindFirstChild("HumanoidRootPart") or mob:FindFirstChild("Head")
     local hrp = Functions.GetHRP()
@@ -59,46 +66,25 @@ end
 
 --=== MOB ===--
 function Functions.FindMob(targetName)
-    local hrp = Functions.GetHRP()
-    if not hrp then return nil end
-    
     local enemies = Workspace:FindFirstChild("Enemies")
     if not enemies then return nil end
+    
+    local hrp = Functions.GetHRP()
+    if not hrp then return nil end
     
     local nearestMob = nil
     local nearestDist = math.huge
     
     for _, mob in pairs(enemies:GetChildren()) do
-        if mob:IsA("Model") then
+        if mob:IsA("Model") and mob.Name == targetName then
             local hum = mob:FindFirstChild("Humanoid")
             local mobHRP = mob:FindFirstChild("HumanoidRootPart")
             
             if hum and mobHRP and hum.Health > 0 then
-                -- Ưu tiên mob đúng tên
-                if mob.Name == targetName then
-                    local dist = (hrp.Position - mobHRP.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestMob = mob
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Nếu không tìm thấy mob đúng tên, lấy bất kỳ mob nào gần nhất
-    if not nearestMob then
-        for _, mob in pairs(enemies:GetChildren()) do
-            if mob:IsA("Model") then
-                local hum = mob:FindFirstChild("Humanoid")
-                local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                
-                if hum and mobHRP and hum.Health > 0 then
-                    local dist = (hrp.Position - mobHRP.Position).Magnitude
-                    if dist < nearestDist then
-                        nearestDist = dist
-                        nearestMob = mob
-                    end
+                local dist = (hrp.Position - mobHRP.Position).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearestMob = mob
                 end
             end
         end
@@ -154,28 +140,31 @@ function Functions.StartFarm()
         local level = Functions.GetLevel()
         Settings.CurrentLevel = level
         
-        -- Lấy mob target theo level
+        -- Lấy data đảo theo level
         local islandData = Data.GetIslandByLevel(level, Settings.CurrentSea)
-        local targetMob = islandData and islandData.Mob or "Any"
+        if not islandData then return end
         
-        Settings.CurrentIsland = islandData and islandData.Island or "Unknown"
-        Settings.CurrentMob = targetMob
+        Settings.CurrentIsland = islandData.Island
+        Settings.CurrentMob = islandData.Mob
         
         -- Auto Equip
         if Settings.AutoEquip then
             Functions.EquipWeapon()
         end
         
-        -- Tìm mob
-        local mob = Functions.FindMob(targetMob)
+        -- Tìm mob đúng tên
+        local mob = Functions.FindMob(islandData.Mob)
         
         if mob then
-            Settings.CurrentMob = mob.Name .. " ✓"
+            -- Có mob → Farm
+            Settings.CurrentMob = islandData.Mob .. " ✓"
             Functions.TeleportToMob(mob)
             Functions.BringMob(mob)
             Functions.Attack()
         else
-            Settings.CurrentMob = targetMob .. " (waiting...)"
+            -- Không có mob → Teleport đến vị trí đảo đúng
+            Settings.CurrentMob = islandData.Mob .. " (teleporting...)"
+            Functions.TeleportTo(islandData.Pos)
         end
     end)
 end
