@@ -1,6 +1,5 @@
 --[[
-    FUNCTIONS MODULE - Logic Auto Farm (All-in-one)
-    Bật Auto Farm = Auto Quest + Kill Aura + Bring Mob
+    FUNCTIONS MODULE - Logic Auto Farm (Fixed)
 ]]
 
 local Functions = {}
@@ -66,17 +65,31 @@ function Functions.TeleportToMob(mob)
     end
 end
 
---=== MOB ===--
+--=== MOB (Fixed - tìm linh hoạt) ===--
 function Functions.FindMob(mobName)
-    local enemies = Workspace:FindFirstChild("Enemies")
-    if not enemies then return nil end
+    -- Tìm trong nhiều folder có thể chứa mob
+    local searchFolders = {
+        Workspace:FindFirstChild("Enemies"),
+        Workspace:FindFirstChild("enemies"),
+        Workspace:FindFirstChild("NPCs"),
+        Workspace:FindFirstChild("Mobs"),
+        Workspace
+    }
     
-    for _, mob in pairs(enemies:GetDescendants()) do
-        if mob:IsA("Model") and mob.Name == mobName then
-            local hum = mob:FindFirstChild("Humanoid")
-            local hrp = mob:FindFirstChild("HumanoidRootPart")
-            if hum and hrp and hum.Health > 0 then
-                return mob
+    for _, folder in pairs(searchFolders) do
+        if folder then
+            for _, mob in pairs(folder:GetDescendants()) do
+                if mob:IsA("Model") then
+                    local hum = mob:FindFirstChild("Humanoid")
+                    local hrp = mob:FindFirstChild("HumanoidRootPart")
+                    
+                    -- Kiểm tra tên mob (có thể chứa tên hoặc bằng tên)
+                    if hum and hrp and hum.Health > 0 then
+                        if mob.Name == mobName or string.find(mob.Name, mobName) then
+                            return mob
+                        end
+                    end
+                end
             end
         end
     end
@@ -101,22 +114,50 @@ function Functions.Attack()
 end
 
 --=== QUEST ===--
-function Functions.AcceptQuest(questName)
+function Functions.AcceptQuest(npcPos, mobName)
+    -- Teleport đến NPC
+    Functions.Teleport(npcPos, Vector3.new(0, 3, 0))
+    task.wait(0.5)
+    
+    -- Thử nhiều cách gọi quest
     pcall(function()
-        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteFunction") and remote.Name == "Quest" then
-                remote:InvokeServer("Start", questName)
-                break
-            end
+        -- Cách 1: RemoteFunction Quest
+        local questRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CommF_")
+        if questRemote then
+            questRemote:InvokeServer("StartQuest", mobName, 1)
         end
     end)
+    
+    pcall(function()
+        -- Cách 2: Click NPC trực tiếp
+        local args = {mobName, 1}
+        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_"):InvokeServer("StartQuest", unpack(args))
+    end)
+end
+
+function Functions.HasQuest()
+    local plrGui = player:FindFirstChild("PlayerGui")
+    if plrGui then
+        local main = plrGui:FindFirstChild("Main")
+        if main then
+            local quest = main:FindFirstChild("Quest")
+            if quest and quest:FindFirstChild("Container") then
+                return quest.Container.Visible
+            end
+        end
+    end
+    return false
 end
 
 --=== EQUIP ===--
 function Functions.EquipWeapon()
     local backpack = player:FindFirstChild("Backpack")
+    local char = Functions.GetCharacter()
     local hum = Functions.GetHumanoid()
     if not backpack or not hum then return end
+    
+    -- Kiểm tra đã trang bị chưa
+    if char:FindFirstChildOfClass("Tool") then return end
     
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") then
@@ -126,7 +167,7 @@ function Functions.EquipWeapon()
     end
 end
 
---=== AUTO FARM (All-in-one) ===--
+--=== AUTO FARM ===--
 function Functions.StartFarm()
     Functions.StopFarm()
     
@@ -135,7 +176,6 @@ function Functions.StartFarm()
     Connections.FarmLoop = RunService.Heartbeat:Connect(function()
         if not Settings.AutoFarm then return end
         
-        -- Cập nhật level và đảo
         local level = Functions.GetLevel()
         local islandData = Data.GetIslandByLevel(level, Settings.CurrentSea)
         if not islandData then return end
@@ -153,15 +193,19 @@ function Functions.StartFarm()
         local mob = Functions.FindMob(islandData.Mob)
         
         if mob then
-            -- Teleport + Bring + Attack
+            -- Có mob -> farm
             Functions.TeleportToMob(mob)
             Functions.BringMob(mob)
             Functions.Attack()
         else
-            -- Không có mob -> nhận quest
-            Functions.Teleport(islandData.NPCPos, Vector3.new(0, 3, 0))
-            task.wait(0.3)
-            Functions.AcceptQuest(islandData.Mob)
+            -- Không có mob
+            if not Functions.HasQuest() then
+                -- Chưa có quest -> nhận quest
+                Functions.AcceptQuest(islandData.NPCPos, islandData.Mob)
+            else
+                -- Đã có quest nhưng không có mob -> teleport đến vị trí mob spawn
+                Functions.Teleport(islandData.MobPos, Vector3.new(0, 15, 0))
+            end
         end
     end)
 end
