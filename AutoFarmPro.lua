@@ -325,10 +325,15 @@ createToggle(farmContent, "KillAuraToggle", "⚔️ Kill Aura", 165, function(en
     print("Kill Aura:", enabled and "BẬT" or "TẮT")
 end)
 
+createToggle(farmContent, "AutoEquipToggle", "🗡️ Auto Equip", 220, function(enabled)
+    Settings.AutoEquip = enabled
+    print("Auto Equip:", enabled and "BẬT" or "TẮT")
+end)
+
 -- Status Display
 local statusFrame = Instance.new("Frame")
 statusFrame.Size = UDim2.new(1, 0, 0, 80)
-statusFrame.Position = UDim2.new(0, 0, 0, 230)
+statusFrame.Position = UDim2.new(0, 0, 0, 285)
 statusFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 statusFrame.BorderSizePixel = 0
 statusFrame.Parent = farmContent
