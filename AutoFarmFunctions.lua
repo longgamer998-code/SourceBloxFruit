@@ -266,7 +266,7 @@ end
 -- AUTO FARM MAIN LOOP
 --============================================
 
--- Tự động trang bị vũ khí tốt nhất
+-- Tự động trang bị vũ khí tốt nhất hoặc vũ khí đã chọn
 function AutoFarmFunctions.EquipBestWeapon()
     local Settings = getSettings()
     if not Settings.AutoEquip then return end
@@ -276,15 +276,37 @@ function AutoFarmFunctions.EquipBestWeapon()
         local char = AutoFarmFunctions.GetCharacter()
         if not backpack or not char then return end
         
-        -- Tìm vũ khí tốt nhất (ưu tiên Sword, sau đó Blox Fruit)
+        local humanoid = AutoFarmFunctions.GetHumanoid()
+        if not humanoid then return end
+        
+        -- Kiểm tra đã trang bị đúng vũ khí chưa
+        local currentWeapon = char:FindFirstChildOfClass("Tool")
+        
+        -- Nếu đã chọn vũ khí cụ thể
+        if Settings.SelectedWeapon then
+            -- Đã đang cầm đúng vũ khí
+            if currentWeapon and currentWeapon.Name == Settings.SelectedWeapon then
+                return
+            end
+            
+            -- Tìm và trang bị vũ khí đã chọn
+            local targetWeapon = backpack:FindFirstChild(Settings.SelectedWeapon)
+            if targetWeapon then
+                humanoid:EquipTool(targetWeapon)
+                return
+            end
+        end
+        
+        -- Nếu đã có vũ khí và không chọn cụ thể -> giữ nguyên
+        if currentWeapon and not Settings.SelectedWeapon then
+            return
+        end
+        
+        -- Tự động chọn vũ khí tốt nhất
         local bestWeapon = nil
         local weaponPriority = {"Sword", "Blox Fruit", "Gun", "Fighting Style"}
         
-        -- Kiểm tra đã trang bị chưa
-        local currentWeapon = char:FindFirstChildOfClass("Tool")
-        if currentWeapon then return end -- Đã có vũ khí
-        
-        -- Tìm trong Backpack
+        -- Tìm trong Backpack theo priority
         for _, priority in ipairs(weaponPriority) do
             for _, tool in pairs(backpack:GetChildren()) do
                 if tool:IsA("Tool") then
@@ -309,10 +331,7 @@ function AutoFarmFunctions.EquipBestWeapon()
         
         -- Trang bị
         if bestWeapon then
-            local humanoid = AutoFarmFunctions.GetHumanoid()
-            if humanoid then
-                humanoid:EquipTool(bestWeapon)
-            end
+            humanoid:EquipTool(bestWeapon)
         end
     end)
 end
