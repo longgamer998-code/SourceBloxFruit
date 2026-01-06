@@ -1,16 +1,15 @@
 --[[
-    DATA MODULE - Mob + Vị trí Teleport chính xác
+    DATA MODULE - Mob + Vi tri Teleport
 ]]
 
 local Data = {}
 
--- CFrame.new(X, Y, Z) = vị trí mob spawn
 Data.Sea1 = {
     {Island = "Starter Island", Level = {1, 10}, Mob = "Bandit", Pos = CFrame.new(-1102, 16, 3852)},
     {Island = "Jungle", Level = {10, 20}, Mob = "Monkey", Pos = CFrame.new(-1613, 42, 152)},
     {Island = "Jungle", Level = {20, 30}, Mob = "Gorilla", Pos = CFrame.new(-1223, 50, 135)},
     {Island = "Pirate Village", Level = {30, 45}, Mob = "Pirate", Pos = CFrame.new(-1176, 4, 3787)},
-    {Island = "Pirate Village", Level = {45, 60}, Mob = "Brute", Pos = CFrame.new(-1게41, 4, 3800)},
+    {Island = "Pirate Village", Level = {45, 60}, Mob = "Brute", Pos = CFrame.new(-1141, 4, 3800)},
     {Island = "Desert", Level = {60, 75}, Mob = "Desert Bandit", Pos = CFrame.new(1095, 6, 4180)},
     {Island = "Desert", Level = {75, 90}, Mob = "Desert Officer", Pos = CFrame.new(1578, 12, 4339)},
     {Island = "Frozen Village", Level = {90, 105}, Mob = "Snow Bandit", Pos = CFrame.new(1386, 87, -1343)},
