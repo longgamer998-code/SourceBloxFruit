@@ -30,9 +30,44 @@ local function getShared()
     }
 end
 
-local BloxFruitsData = getShared().Data
-local Functions = getShared().Functions
-local Settings = getShared().Settings
+-- Sử dụng function để luôn lấy data mới nhất (tránh lỗi data rỗng khi load)
+local function getBloxFruitsData()
+    return getgenv().AutoFarmPro and getgenv().AutoFarmPro.Data or {}
+end
+
+local function getFunctions()
+    return getgenv().AutoFarmPro and getgenv().AutoFarmPro.Functions or {}
+end
+
+local function getSettings()
+    return getgenv().AutoFarmPro and getgenv().AutoFarmPro.Settings or {}
+end
+
+-- Backward compatibility - alias cho code cũ
+local BloxFruitsData = setmetatable({}, {
+    __index = function(_, key)
+        return getBloxFruitsData()[key]
+    end
+})
+
+local Functions = setmetatable({}, {
+    __index = function(_, key)
+        return getFunctions()[key]
+    end
+})
+
+local Settings = setmetatable({}, {
+    __index = function(_, key)
+        return getSettings()[key]
+    end,
+    __newindex = function(_, key, value)
+        local settings = getgenv().AutoFarmPro and getgenv().AutoFarmPro.Settings
+        if settings then
+            settings[key] = value
+        end
+    end
+})
+
 local attackConnection = nil
 
 --============================================
