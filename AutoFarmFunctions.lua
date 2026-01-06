@@ -265,6 +265,160 @@ end
 --============================================
 -- AUTO FARM MAIN LOOP
 --============================================
+
+-- Tự động trang bị vũ khí tốt nhất
+function AutoFarmFunctions.EquipBestWeapon()
+    local Settings = getSettings()
+    if not Settings.AutoEquip then return end
+    
+    pcall(function()
+        local backpack = player:FindFirstChild("Backpack")
+        local char = AutoFarmFunctions.GetCharacter()
+        if not backpack or not char then return end
+        
+        -- Tìm vũ khí tốt nhất (ưu tiên Sword, sau đó Blox Fruit)
+        local bestWeapon = nil
+        local weaponPriority = {"Sword", "Blox Fruit", "Gun", "Fighting Style"}
+        
+        -- Kiểm tra đã trang bị chưa
+        local currentWeapon = char:FindFirstChildOfClass("Tool")
+        if currentWeapon then return end -- Đã có vũ khí
+        
+        -- Tìm trong Backpack
+        for _, priority in ipairs(weaponPriority) do
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    if tool.Name:find(priority) or tool:GetAttribute("Type") == priority then
+                        bestWeapon = tool
+                        break
+                    end
+                end
+            end
+            if bestWeapon then break end
+        end
+        
+        -- Nếu không tìm được theo priority, lấy tool đầu tiên
+        if not bestWeapon then
+            for _, tool in pairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    bestWeapon = tool
+                    break
+                end
+            end
+        end
+        
+        -- Trang bị
+        if bestWeapon then
+            local humanoid = AutoFarmFunctions.GetHumanoid()
+            if humanoid then
+                humanoid:EquipTool(bestWeapon)
+            end
+        end
+    end)
+end
+
+-- Detect Sea hiện tại dựa vào vị trí hoặc PlaceId
+function AutoFarmFunctions.GetCurrentSea()
+    local placeId = game.PlaceId
+    
+    -- Blox Fruits Place IDs
+    local seaPlaceIds = {
+        [2753915549] = 1,  -- Sea 1 (Old World)
+        [4442272183] = 2,  -- Sea 2 (New World)  
+        [7449423635] = 3,  -- Sea 3 (Third Sea)
+    }
+    
+    return seaPlaceIds[placeId] or 1
+end
+
+-- Tìm đảo tốt nhất cho level hiện tại
+function AutoFarmFunctions.GetBestIslandForLevel(playerLevel, seaNum)
+    local Data = getData()
+    local seaData = Data["Sea" .. seaNum]
+    if not seaData then return nil, nil end
+    
+    local bestIsland = nil
+    local bestMob = nil
+    
+    for _, island in ipairs(seaData) do
+        local minLv, maxLv = island.LevelRange[1], island.LevelRange[2]
+        
+        -- Tìm đảo mà player level nằm trong range hoặc gần nhất
+        if playerLevel >= minLv and playerLevel <= maxLv + 10 then
+            bestIsland = island
+            
+            -- Tìm mob có level cao nhất mà player có thể đánh
+            for _, mob in ipairs(island.Mobs or {}) do
+                if playerLevel >= mob.Level - 5 then
+                    if not bestMob or mob.Level > bestMob.Level then
+                        bestMob = mob
+                    end
+                end
+            end
+            
+            if bestMob then break end
+        end
+    end
+    
+    -- Nếu level quá cao cho sea này, lấy đảo cuối
+    if not bestIsland and seaData[#seaData] then
+        bestIsland = seaData[#seaData]
+        if bestIsland.Mobs and #bestIsland.Mobs > 0 then
+            bestMob = bestIsland.Mobs[#bestIsland.Mobs]
+        end
+    end
+    
+    return bestIsland, bestMob
+end
+
+-- Kiểm tra có cần chuyển đảo/mob không
+function AutoFarmFunctions.ShouldSwitchIsland()
+    local Settings = getSettings()
+    local playerLevel = AutoFarmFunctions.GetPlayerLevel()
+    
+    if not Settings.SelectedIsland then return true end
+    
+    local maxLv = Settings.SelectedIsland.LevelRange[2]
+    
+    -- Nếu level player cao hơn max level đảo 10 level -> chuyển
+    if playerLevel > maxLv + 10 then
+        return true
+    end
+    
+    return false
+end
+
+-- Auto update đảo và mob theo level
+function AutoFarmFunctions.AutoUpdateIslandAndMob()
+    local Settings = getSettings()
+    local playerLevel = AutoFarmFunctions.GetPlayerLevel()
+    local currentSea = Settings.CurrentSea or AutoFarmFunctions.GetCurrentSea()
+    
+    local newIsland, newMob = AutoFarmFunctions.GetBestIslandForLevel(playerLevel, currentSea)
+    
+    if newIsland and newMob then
+        local changed = false
+        
+        if not Settings.SelectedIsland or Settings.SelectedIsland.Island ~= newIsland.Island then
+            Settings.SelectedIsland = newIsland
+            changed = true
+        end
+        
+        if not Settings.SelectedMob or Settings.SelectedMob.Name ~= newMob.Name then
+            Settings.SelectedMob = newMob
+            changed = true
+        end
+        
+        if changed then
+            print("[AutoFarm] Level " .. playerLevel .. " → " .. newIsland.Island .. " - " .. newMob.Name)
+        end
+        
+        return changed
+    end
+    
+    return false
+end
+
 function AutoFarmFunctions.StartAutoFarm()
     local Settings = getSettings()
     local Connections = getConnections()
@@ -272,8 +426,32 @@ function AutoFarmFunctions.StartAutoFarm()
     -- Dừng farm cũ nếu có
     AutoFarmFunctions.StopAutoFarm()
     
+    -- Khởi tạo sea hiện tại
+    if not Settings.CurrentSea then
+        Settings.CurrentSea = AutoFarmFunctions.GetCurrentSea()
+    end
+    
+    -- Auto chọn đảo/mob ban đầu nếu chưa có
+    if not Settings.SelectedIsland or not Settings.SelectedMob then
+        AutoFarmFunctions.AutoUpdateIslandAndMob()
+    end
+    
+    -- Biến đếm để kiểm tra chuyển đảo định kỳ
+    local checkCounter = 0
+    
     Connections.FarmLoop = RunService.Heartbeat:Connect(function()
         if not Settings.AutoFarm then return end
+        
+        -- Auto Equip vũ khí
+        AutoFarmFunctions.EquipBestWeapon()
+        
+        -- Kiểm tra chuyển đảo mỗi 300 frames (~5 giây)
+        checkCounter = checkCounter + 1
+        if checkCounter >= 300 then
+            checkCounter = 0
+            AutoFarmFunctions.AutoUpdateIslandAndMob()
+        end
+        
         if not Settings.SelectedMob then return end
         
         local mobName = Settings.SelectedMob.Name
@@ -301,7 +479,7 @@ function AutoFarmFunctions.StartAutoFarm()
         end
     end)
     
-    print("[AutoFarm] Farm loop started!")
+    print("[AutoFarm] Farm loop started! Sea " .. (Settings.CurrentSea or "?"))
 end
 
 function AutoFarmFunctions.StopAutoFarm()
