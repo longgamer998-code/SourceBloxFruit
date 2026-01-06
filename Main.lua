@@ -273,7 +273,7 @@ local function main()
     loader:updateProgress(10)
     wait(Config.LoadDelay)
     
-    local dataModule = loadModule(Config.DataModuleURL, "BloxFruitsData")
+    local dataModule = loadstring(readfile("BloxFruitsData.lua"))()
     if dataModule then
         getgenv().AutoFarmPro.Data = dataModule
         getgenv().AutoFarmPro.Loaded.Data = true
