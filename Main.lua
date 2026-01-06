@@ -15,10 +15,21 @@
 -- CONFIGURATION - THAY ĐỔI LINK CỦA BẠN Ở ĐÂY
 --============================================
 local Config = {
+    -- Chế độ load: "local" hoặc "url"
+    -- "local" = load từ file trong cùng thư mục (dùng cho test)
+    -- "url" = load từ raw link (dùng cho publish)
+    LoadMode = "local",
+    
     -- Raw links cho từng module (Github, Pastebin, etc.)
+    -- Chỉ cần điền nếu LoadMode = "url"
     DataModuleURL = "YOUR_RAW_LINK/BloxFruitsData.lua",
     FunctionsModuleURL = "YOUR_RAW_LINK/AutoFarmFunctions.lua", 
     GUIModuleURL = "YOUR_RAW_LINK/AutoFarmGUI.lua",
+    
+    -- Tên file local (dùng khi LoadMode = "local")
+    DataModuleFile = "BloxFruitsData.lua",
+    FunctionsModuleFile = "AutoFarmFunctions.lua",
+    GUIModuleFile = "AutoFarmGUI.lua",
     
     -- Debug mode - hiển thị log
     Debug = true,
@@ -93,14 +104,34 @@ local function log(message, messageType)
     print(prefix .. message)
 end
 
-local function loadModule(url, moduleName)
+local function loadModule(urlOrFile, moduleName, isLocal)
     log("Đang tải " .. moduleName .. "...", "loading")
     
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url))()
-    end)
+    local success, result
     
-    if success then
+    if isLocal or Config.LoadMode == "local" then
+        -- Load từ file local (sử dụng readfile của executor)
+        success, result = pcall(function()
+            if readfile then
+                return loadstring(readfile(urlOrFile))()
+            else
+                -- Fallback: thử dùng loadfile nếu có
+                local fn, err = loadfile(urlOrFile)
+                if fn then
+                    return fn()
+                else
+                    error("Không thể đọc file: " .. tostring(err))
+                end
+            end
+        end)
+    else
+        -- Load từ URL
+        success, result = pcall(function()
+            return loadstring(game:HttpGet(urlOrFile))()
+        end)
+    end
+    
+    if success and result then
         log(moduleName .. " đã tải thành công!", "success")
         return result
     else
@@ -273,7 +304,8 @@ local function main()
     loader:updateProgress(10)
     wait(Config.LoadDelay)
     
-    local dataModule = loadstring(readfile("BloxFruitsData.lua"))()
+    local dataSource = Config.LoadMode == "local" and Config.DataModuleFile or Config.DataModuleURL
+    local dataModule = loadModule(dataSource, "BloxFruitsData")
     if dataModule then
         getgenv().AutoFarmPro.Data = dataModule
         getgenv().AutoFarmPro.Loaded.Data = true
@@ -291,7 +323,8 @@ local function main()
     -- STEP 2: Load Functions Module
     loader:updateStatus("Đang tải AutoFarmFunctions...")
     
-    local functionsModule = loadModule(Config.FunctionsModuleURL, "AutoFarmFunctions")
+    local funcSource = Config.LoadMode == "local" and Config.FunctionsModuleFile or Config.FunctionsModuleURL
+    local functionsModule = loadModule(funcSource, "AutoFarmFunctions")
     if functionsModule then
         getgenv().AutoFarmPro.Functions = functionsModule
         getgenv().AutoFarmPro.Loaded.Functions = true
@@ -309,7 +342,8 @@ local function main()
     -- STEP 3: Load GUI Module
     loader:updateStatus("Đang tải AutoFarmGUI...")
     
-    local guiModule = loadModule(Config.GUIModuleURL, "AutoFarmGUI")
+    local guiSource = Config.LoadMode == "local" and Config.GUIModuleFile or Config.GUIModuleURL
+    local guiModule = loadModule(guiSource, "AutoFarmGUI")
     if guiModule then
         getgenv().AutoFarmPro.Loaded.GUI = true
         loader:setModuleStatus("gui", true)
