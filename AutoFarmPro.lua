@@ -308,6 +308,17 @@ end
 createToggle(farmContent, "AutoFarmToggle", "🎯 Auto Farm", 0, function(enabled)
     Settings.AutoFarm = enabled
     print("Auto Farm:", enabled and "BẬT" or "TẮT")
+    
+    -- Gọi start/stop farm
+    if enabled then
+        if getFunctions().StartAutoFarm then
+            getFunctions().StartAutoFarm()
+        end
+    else
+        if getFunctions().StopAutoFarm then
+            getFunctions().StopAutoFarm()
+        end
+    end
 end)
 
 createToggle(farmContent, "AutoQuestToggle", "📜 Auto Quest", 55, function(enabled)
@@ -330,10 +341,178 @@ createToggle(farmContent, "AutoEquipToggle", "🗡️ Auto Equip", 220, function
     print("Auto Equip:", enabled and "BẬT" or "TẮT")
 end)
 
+-- Weapon Dropdown cho Auto Equip
+local weaponLabel = Instance.new("TextLabel")
+weaponLabel.Size = UDim2.new(1, 0, 0, 20)
+weaponLabel.Position = UDim2.new(0, 0, 0, 275)
+weaponLabel.BackgroundTransparency = 1
+weaponLabel.Text = "🗡️ Chọn Vũ Khí:"
+weaponLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+weaponLabel.TextSize = 12
+weaponLabel.Font = Enum.Font.Gotham
+weaponLabel.TextXAlignment = Enum.TextXAlignment.Left
+weaponLabel.Parent = farmContent
+
+local weaponDropdown = Instance.new("Frame")
+weaponDropdown.Name = "WeaponDropdown"
+weaponDropdown.Size = UDim2.new(1, 0, 0, 35)
+weaponDropdown.Position = UDim2.new(0, 0, 0, 295)
+weaponDropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+weaponDropdown.BorderSizePixel = 0
+weaponDropdown.Parent = farmContent
+
+local weaponCorner = Instance.new("UICorner")
+weaponCorner.CornerRadius = UDim.new(0, 6)
+weaponCorner.Parent = weaponDropdown
+
+local weaponSelected = Instance.new("TextLabel")
+weaponSelected.Name = "Selected"
+weaponSelected.Size = UDim2.new(1, -40, 1, 0)
+weaponSelected.Position = UDim2.new(0, 10, 0, 0)
+weaponSelected.BackgroundTransparency = 1
+weaponSelected.Text = Settings.SelectedWeapon or "Tự động"
+weaponSelected.TextColor3 = Color3.fromRGB(220, 220, 220)
+weaponSelected.TextSize = 12
+weaponSelected.Font = Enum.Font.Gotham
+weaponSelected.TextXAlignment = Enum.TextXAlignment.Left
+weaponSelected.Parent = weaponDropdown
+
+local weaponArrow = Instance.new("TextLabel")
+weaponArrow.Size = UDim2.new(0, 30, 1, 0)
+weaponArrow.Position = UDim2.new(1, -35, 0, 0)
+weaponArrow.BackgroundTransparency = 1
+weaponArrow.Text = "▼"
+weaponArrow.TextColor3 = Color3.fromRGB(150, 150, 150)
+weaponArrow.TextSize = 12
+weaponArrow.Font = Enum.Font.Gotham
+weaponArrow.Parent = weaponDropdown
+
+local weaponBtn = Instance.new("TextButton")
+weaponBtn.Size = UDim2.new(1, 0, 1, 0)
+weaponBtn.BackgroundTransparency = 1
+weaponBtn.Text = ""
+weaponBtn.Parent = weaponDropdown
+
+local weaponOptions = Instance.new("ScrollingFrame")
+weaponOptions.Name = "Options"
+weaponOptions.Size = UDim2.new(1, 0, 0, 150)
+weaponOptions.Position = UDim2.new(0, 0, 1, 5)
+weaponOptions.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+weaponOptions.BorderSizePixel = 0
+weaponOptions.ScrollBarThickness = 4
+weaponOptions.Visible = false
+weaponOptions.ZIndex = 10
+weaponOptions.CanvasSize = UDim2.new(0, 0, 0, 0)
+weaponOptions.Parent = weaponDropdown
+
+local weaponOptionsCorner = Instance.new("UICorner")
+weaponOptionsCorner.CornerRadius = UDim.new(0, 6)
+weaponOptionsCorner.Parent = weaponOptions
+
+local weaponListLayout = Instance.new("UIListLayout")
+weaponListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+weaponListLayout.Padding = UDim.new(0, 2)
+weaponListLayout.Parent = weaponOptions
+
+-- Function refresh danh sách vũ khí
+local function refreshWeaponList()
+    -- Clear old options
+    for _, child in pairs(weaponOptions:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    -- Thêm option "Tự động"
+    local autoOption = Instance.new("TextButton")
+    autoOption.Size = UDim2.new(1, -10, 0, 28)
+    autoOption.Position = UDim2.new(0, 5, 0, 0)
+    autoOption.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    autoOption.Text = "🔄 Tự động (Best)"
+    autoOption.TextColor3 = Color3.fromRGB(100, 255, 100)
+    autoOption.TextSize = 11
+    autoOption.Font = Enum.Font.Gotham
+    autoOption.ZIndex = 11
+    autoOption.Parent = weaponOptions
+    
+    local autoCorner = Instance.new("UICorner")
+    autoCorner.CornerRadius = UDim.new(0, 4)
+    autoCorner.Parent = autoOption
+    
+    autoOption.MouseButton1Click:Connect(function()
+        Settings.SelectedWeapon = nil
+        weaponSelected.Text = "Tự động"
+        weaponOptions.Visible = false
+    end)
+    
+    -- Lấy vũ khí từ Backpack
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:FindFirstChild("Backpack")
+    local char = player.Character
+    
+    local weapons = {}
+    
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(weapons, tool.Name)
+            end
+        end
+    end
+    
+    if char then
+        for _, tool in pairs(char:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(weapons, tool.Name)
+            end
+        end
+    end
+    
+    -- Tạo option cho mỗi vũ khí
+    for _, weaponName in ipairs(weapons) do
+        local option = Instance.new("TextButton")
+        option.Size = UDim2.new(1, -10, 0, 28)
+        option.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        option.Text = "  " .. weaponName
+        option.TextColor3 = Color3.fromRGB(220, 220, 220)
+        option.TextSize = 11
+        option.Font = Enum.Font.Gotham
+        option.TextXAlignment = Enum.TextXAlignment.Left
+        option.ZIndex = 11
+        option.Parent = weaponOptions
+        
+        local optCorner = Instance.new("UICorner")
+        optCorner.CornerRadius = UDim.new(0, 4)
+        optCorner.Parent = option
+        
+        option.MouseButton1Click:Connect(function()
+            Settings.SelectedWeapon = weaponName
+            weaponSelected.Text = weaponName
+            weaponOptions.Visible = false
+            print("Đã chọn vũ khí:", weaponName)
+        end)
+    end
+    
+    -- Update canvas size
+    weaponOptions.CanvasSize = UDim2.new(0, 0, 0, weaponListLayout.AbsoluteContentSize.Y + 10)
+end
+
+-- Toggle dropdown
+local weaponDropdownOpen = false
+weaponBtn.MouseButton1Click:Connect(function()
+    weaponDropdownOpen = not weaponDropdownOpen
+    weaponOptions.Visible = weaponDropdownOpen
+    weaponArrow.Text = weaponDropdownOpen and "▲" or "▼"
+    
+    if weaponDropdownOpen then
+        refreshWeaponList()
+    end
+end)
+
 -- Status Display
 local statusFrame = Instance.new("Frame")
 statusFrame.Size = UDim2.new(1, 0, 0, 80)
-statusFrame.Position = UDim2.new(0, 0, 0, 285)
+statusFrame.Position = UDim2.new(0, 0, 0, 345)
 statusFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 statusFrame.BorderSizePixel = 0
 statusFrame.Parent = farmContent
