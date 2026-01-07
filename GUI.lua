@@ -83,15 +83,11 @@ function GUI.Create()
     content.BackgroundTransparency = 1
     content.Parent = main
     
-    -- Toggle: Auto Farm
-    GUI.CreateToggle(content, "Auto Farm", 0, function(enabled)
-        Settings.AutoFarm = enabled
-    end)
+    -- Toggle: Auto Farm (synced with Settings.AutoFarm)
+    GUI.CreateToggle(content, "Auto Farm", 0, "AutoFarm")
     
-    -- Toggle: Auto Equip
-    GUI.CreateToggle(content, "Auto Equip", 35, function(enabled)
-        Settings.AutoEquip = enabled
-    end)
+    -- Toggle: Auto Equip (synced with Settings.AutoEquip)
+    GUI.CreateToggle(content, "Auto Equip", 35, "AutoEquip")
     
     -- Status Frame
     local statusFrame = Instance.new("Frame")
@@ -135,7 +131,7 @@ function GUI.Create()
     return screen
 end
 
-function GUI.CreateToggle(parent, text, yPos, callback)
+function GUI.CreateToggle(parent, text, yPos, settingKey)
     local container = Instance.new("Frame")
     container.Size = UDim2.new(1, 0, 0, 30)
     container.Position = UDim2.new(0, 0, 0, yPos)
@@ -172,16 +168,26 @@ function GUI.CreateToggle(parent, text, yPos, callback)
     btn.Text = ""
     btn.Parent = toggleBg
     
-    local enabled = false
+    -- Read initial state from Settings
+    local function UpdateVisual(enabled)
+        local targetPos = enabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+        local targetColor = enabled and Color3.fromRGB(80, 200, 120) or Color3.fromRGB(60, 60, 70)
+        TweenService:Create(circle, TweenInfo.new(0.15), {Position = targetPos}):Play()
+        TweenService:Create(toggleBg, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+    end
+    
+    -- Initialize visual from Settings
+    local initialValue = Settings[settingKey] or false
+    if initialValue then
+        circle.Position = UDim2.new(1, -18, 0.5, -8)
+        toggleBg.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+    end
+    
+    -- Toggle click handler
     btn.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        TweenService:Create(circle, TweenInfo.new(0.15), {
-            Position = enabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-        }):Play()
-        TweenService:Create(toggleBg, TweenInfo.new(0.15), {
-            BackgroundColor3 = enabled and Color3.fromRGB(80, 200, 120) or Color3.fromRGB(60, 60, 70)
-        }):Play()
-        callback(enabled)
+        local newValue = not Settings[settingKey]
+        Settings[settingKey] = newValue
+        UpdateVisual(newValue)
     end)
 end
 
