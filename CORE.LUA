@@ -1,8 +1,7 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - IDOL DEV STYLE (Debug Always On)             ║
--- ║  ✅ xpcall với traceback đúng                             ║
--- ║  ✅ Multi-method M1 (mouse1click → VIM → VU → Tool)       ║
--- ║  ✅ Runtime debug đầy đủ (luôn bật)                       ║
+-- ║  CORE.LUA - FIX:  Không click global (chỉ remote + Tool)  ║
+-- ║  ✅ Bỏ VirtualInputManager/VirtualUser click              ║
+-- ║  ✅ Chỉ dùng Remote Combat + Tool:Activate()              ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -14,6 +13,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ScriptContext = game:GetService("ScriptContext")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local currentTween = nil
@@ -22,12 +22,11 @@ local autoFarmThread = nil
 local oldPrint = print
 local oldWarn = warn
 
-local m1Stats = {
-    mouse1click = 0,
-    vim = 0,
-    virtualuser = 0,
-    tool = 0,
-    failed = 0
+local attackStats = {
+    remoteSuccess = 0,
+    remoteFailed = 0,
+    toolActivate = 0,
+    skippedDueToUI = 0
 }
 
 function Core.initConsole(Config)
@@ -57,8 +56,6 @@ function Core.initConsole(Config)
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
     Core.logSuccess = function(msg) addLog(msg, "SUCCESS") end
-    
-    -- ✅ Debug luôn bật (bỏ check Config.Settings.DebugMode)
     Core.logDebug = function(msg) addLog(msg, "DEBUG") end
     
     ScriptContext.Error: Connect(function(message, stackTrace)
@@ -83,8 +80,8 @@ end
 
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
-    output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
+    output = output .. "Player: " ..  player.Name .. "\n"
+    output = output .. "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
@@ -114,20 +111,19 @@ function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
     output = output .. "Attack Attempts: " .. tostring(Config.CombatDebug.AttackAttempts) .. "\n"
     output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
-    output = output .. "Click Attempts: " .. tostring(Config. CombatDebug.ClickAttempts) .. "\n"
-    output = output .. "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
-    output = output .. "Weapon Equip Fails: " .. tostring(Config. CombatDebug.WeaponEquipFails) .. "\n"
-    output = output ..  "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
+    output = output .. "Click Attempts: " .. tostring(Config.CombatDebug. ClickAttempts) .. "\n"
+    output = output ..  "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
+    output = output .. "Weapon Equip Fails: " ..  tostring(Config.CombatDebug.WeaponEquipFails) .. "\n"
+    output = output .. "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
     
     local hitRate = Config.CombatDebug.AttackAttempts > 0 and 
-        (Config.CombatDebug.SuccessfulHits / Config.CombatDebug. AttackAttempts * 100) or 0
+        (Config.CombatDebug. SuccessfulHits / Config.CombatDebug.AttackAttempts * 100) or 0
     output = output .. "Hit Rate: " .. tostring(math.floor(hitRate)) .. "%\n"
-    output = output .. "\n=== M1 METHOD STATS ===\n"
-    output = output .. "mouse1click: " .. m1Stats.mouse1click .. "\n"
-    output = output ..  "VirtualInputManager: " .. m1Stats. vim .. "\n"
-    output = output .. "VirtualUser: " .. m1Stats.virtualuser ..  "\n"
-    output = output .. "Tool:Activate: " .. m1Stats. tool .. "\n"
-    output = output .. "Failed: " .. m1Stats.failed .. "\n"
+    output = output .. "\n=== ATTACK METHOD STATS ===\n"
+    output = output .. "Remote Success: " .. attackStats.remoteSuccess .. "\n"
+    output = output .. "Remote Failed: " .. attackStats. remoteFailed .. "\n"
+    output = output .. "Tool Activate: " .. attackStats.toolActivate .. "\n"
+    output = output .. "Skipped (UI focus): " .. attackStats.skippedDueToUI .. "\n"
     output = output .. "==============================\n"
     return output
 end
@@ -137,7 +133,7 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core.getCharacter()
+function Core. getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
@@ -158,7 +154,7 @@ function Core.getPlayerWeapons()
     local seen = {["Melee"] = true}
     
     Core.safePcall(function()
-        local backpack = player. Backpack
+        local backpack = player.Backpack
         local character = Core.getCharacter()
         
         for _, item in pairs(backpack:GetChildren()) do
@@ -239,7 +235,7 @@ function Core.tweenTo(targetPos, Config)
         )
         
         currentTween:Play()
-        currentTween. Completed:Wait()
+        currentTween.Completed:Wait()
     end)
     
     return success
@@ -247,7 +243,7 @@ end
 
 function Core.smartTeleport(targetPos, forceTween, Config)
     local success = Core.safePcall(function()
-        local hrp = Core.getHRP()
+        local hrp = Core. getHRP()
         if not hrp then
             Core.logError("[TP] HRP not found")
             return false
@@ -256,12 +252,12 @@ function Core.smartTeleport(targetPos, forceTween, Config)
         local distance = (hrp.Position - targetPos).Magnitude
         local distStr = tostring(math.floor(distance))
         
-        if forceTween or (Config.Settings.SafeTeleport and distance > 100) then
+        if forceTween or (Config. Settings.SafeTeleport and distance > 100) then
             Core.logDebug("[TP] Tween " .. distStr .. " studs")
             Core.tweenTo(targetPos, Config)
         else
             Core.logDebug("[TP] Instant TP " .. distStr ..  " studs")
-            hrp.CFrame = CFrame. new(targetPos)
+            hrp.CFrame = CFrame.new(targetPos)
             task.wait(0.3)
         end
         
@@ -274,90 +270,67 @@ end
 function Core.enableHaki(Config)
     if not Config.Settings.AutoHaki then return end
     Core.safePcall(function()
-        ReplicatedStorage. Remotes.CommF_:InvokeServer("Buso")
+        ReplicatedStorage.Remotes. CommF_:InvokeServer("Buso")
         Core.logDebug("[Haki] Enabled")
     end)
 end
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  M1 CLICK - IDOL DEV STYLE                                ║
+-- ║  ATTACK - KHÔNG CLICK GLOBAL (chỉ remote + tool)         ║
 -- ╚══════════════════════════════════════════════════════════╝
 
-function Core. doM1()
-    if type(mouse1click) == "function" then
-        local ok = Core.safePcall(function()
-            mouse1click()
-        end)
-        if ok then
-            m1Stats.mouse1click = m1Stats.mouse1click + 1
-            return true, "mouse1click"
-        end
+-- ✅ Check xem có đang focus vào UI không
+function Core.isUIFocused()
+    -- Check nếu đang type vào textbox
+    if UserInputService:GetFocusedTextBox() then
+        return true
     end
     
-    if type(mouse1press) == "function" and type(mouse1release) == "function" then
-        local ok = Core.safePcall(function()
-            mouse1press()
-            task.wait(0.02)
-            mouse1release()
-        end)
-        if ok then
-            m1Stats.mouse1click = m1Stats.mouse1click + 1
-            return true, "mouse1press/release"
-        end
-    end
+    -- Check nếu chuột đang hover UI (không phải game world)
+    local mousePos = UserInputService:GetMouseLocation()
+    local guiObjects = player.PlayerGui:GetGuiObjectsAtPosition(mousePos. X, mousePos.Y)
     
-    local okVIM = Core.safePcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.02)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-    end)
-    if okVIM then
-        m1Stats.vim = m1Stats. vim + 1
-        return true, "VirtualInputManager"
-    end
-    
-    local okVU = Core.safePcall(function()
-        VirtualUser: CaptureController()
-        VirtualUser:Button1Down(Vector2.new(0, 0), workspace. CurrentCamera.CFrame)
-        task.wait(0.02)
-        VirtualUser:Button1Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    end)
-    if okVU then
-        m1Stats.virtualuser = m1Stats. virtualuser + 1
-        return true, "VirtualUser"
-    end
-    
-    local okTool = Core.safePcall(function()
-        local char = player.Character
-        local tool = char and char:FindFirstChildOfClass("Tool")
-        if tool and tool. Activate then 
-            tool: Activate() 
-            return true
-        end
-        return false
-    end)
-    if okTool then
-        m1Stats.tool = m1Stats.tool + 1
-        return true, "Tool: Activate"
-    end
-    
-    m1Stats.failed = m1Stats.failed + 1
-    return false, "all_methods_failed"
+    return #guiObjects > 0
 end
 
-function Core. performAttack(Config)
+-- ✅ Attack ĐÚNG:  Remote + Tool, KHÔNG click global
+function Core.performAttack(Config)
     Core.safePcall(function()
-        local clicked, method = Core.doM1()
+        -- Check UI focus trước
+        if Core.isUIFocused() then
+            attackStats.skippedDueToUI = attackStats.skippedDueToUI + 1
+            Core.logDebug("[Attack] Skipped (UI focused)")
+            return
+        end
         
+        -- 1) Gọi remote Combat (chính)
         local remoteOk = Core.safePcall(function()
             ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
         end)
         
+        if remoteOk then
+            attackStats.remoteSuccess = attackStats.remoteSuccess + 1
+        else
+            attackStats.remoteFailed = attackStats.remoteFailed + 1
+        end
+        
+        -- 2) Nếu đang cầm Tool → Activate (backup)
+        local character = Core.getCharacter()
+        local tool = character and character:FindFirstChildOfClass("Tool")
+        
+        if tool and tool. Activate then
+            Core.safePcall(function()
+                tool: Activate()
+            end)
+            attackStats.toolActivate = attackStats.toolActivate + 1
+        end
+        
         Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
-        Core.logDebug("[Attack] M1=" .. tostring(clicked) .. " (" .. method .. ") Remote=" .. tostring(remoteOk))
+        Core.logDebug("[Attack] Remote=" .. tostring(remoteOk) .. " Tool=" .. tostring(tool ~= nil))
     end)
 end
 
+-- ✅ Fast Attack ĐÚNG: throttle + không click global
 do
     local lastFastAttack = 0
     local FAST_ATTACK_INTERVAL = 0.15
@@ -365,7 +338,7 @@ do
     function Core.startFastAttack(Config)
         if fastAttackConnection then return end
         
-        fastAttackConnection = RunService.Heartbeat:Connect(function()
+        fastAttackConnection = RunService. Heartbeat:Connect(function()
             if not (Config.Settings.FastAttack and Config.Settings. Enabled) then
                 return
             end
@@ -385,24 +358,31 @@ do
                     return
                 end
                 
+                -- Skip nếu đang focus UI
+                if Core.isUIFocused() then
+                    return
+                end
+                
                 local equippedTool = character:FindFirstChildOfClass("Tool")
                 local weaponName = equippedTool and equippedTool.Name or "Melee"
                 
                 Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName)
                 
-                local clicked, method = Core.doM1()
-                
+                -- Remote Combat
                 Core.safePcall(function()
-                    ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("Combat")
                 end)
                 
-                if not clicked then
-                    Core.logError("[FastAttack] M1 failed (" .. method .. ")")
+                -- Tool Activate nếu có
+                if equippedTool and equippedTool. Activate then
+                    Core.safePcall(function()
+                        equippedTool: Activate()
+                    end)
                 end
             end)
         end)
         
-        print("✅ Fast Attack started (Multi-method mode)")
+        print("✅ Fast Attack started (Remote + Tool mode, NO global click)")
     end
 end
 
@@ -497,7 +477,7 @@ function Core.startAutoFarm(Config)
     end
 end
 
--- ╔════════════���═════════════════════════════════════════════╗
+-- ╔══════════════════════════════════════════════════════════╗
 -- ║  AUTO FARM FUNCTIONS                                       ║
 -- ╚══════════════════════════════════════════════════════════╝
 
@@ -508,7 +488,7 @@ function Core.findBestQuest(Config)
     for locationName, quests in pairs(Config.QuestData) do
         for idx, quest in ipairs(quests) do
             if quest.LevelReq <= level then
-                if not bestQuest or quest.LevelReq > bestQuest. LevelReq then
+                if not bestQuest or quest.LevelReq > bestQuest.LevelReq then
                     bestQuest = quest
                     bestLocation = locationName
                     bestIndex = idx
@@ -522,7 +502,7 @@ end
 
 function Core.hasActiveQuest()
     local ok, result = Core.safePcall(function()
-        local questUI = player. PlayerGui:FindFirstChild("Main")
+        local questUI = player.PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
             return quest and quest. Visible
@@ -580,7 +560,7 @@ function Core.findNearestMob(mobName, Config)
         local nearestMob, nearestDistance = nil, math.huge
         
         for _, enemy in pairs(workspace. Enemies:GetChildren()) do
-            if enemy. Name == mobName then
+            if enemy.Name == mobName then
                 local enemyHRP = enemy:FindFirstChild("HumanoidRootPart")
                 local enemyHumanoid = enemy:FindFirstChild("Humanoid")
                 
@@ -662,7 +642,7 @@ function Core.farmMob(mobName, count, Config)
                 local direction = (hrp.Position - targetPos).Unit
                 local behindMob = targetPos + direction * math.min(Config.Settings.FarmDistance, 6)
                 local side = Vector3.new(-direction.Z, 0, direction.X).Unit * 2
-                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob.Z) + side
+                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob. Z) + side
                 
                 Core.logDebug("[TP] Target mob pos: " .. tostring(targetPos))
                 Core.logDebug("[TP] Farm pos calculated: " .. tostring(farmPos))
@@ -713,7 +693,7 @@ function Core.farmMob(mobName, count, Config)
                             Core.performAttack(Config)
                             
                             if tick() - lastHealthCheck > 0.5 then
-                                local currentHealth = mobHumanoid. Health
+                                local currentHealth = mobHumanoid.Health
                                 
                                 if currentHealth < Config.CombatDebug.LastMobHealth then
                                     local damage = Config.CombatDebug.LastMobHealth - currentHealth
@@ -760,7 +740,7 @@ function Core.farmMob(mobName, count, Config)
         end
         
         if killed >= count then
-            Core.logSuccess("[Farm] ✅ Completed:  " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
+            Core.logSuccess("[Farm] ✅ Completed: " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
             return true
         else
             Core.logError("[Farm] ❌ Only killed " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
