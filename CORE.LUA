@@ -1,6 +1,6 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - HOTKEY EQUIP FIX                              ║
--- ║  ✅ Fixed: Auto equip bằng hotkey (1=Melee, 2=Weapon)     ║
+-- ║  CORE.LUA - PROFESSIONAL THREAD TRACKING                  ║
+-- ║  ✅ Cách 1: Thread tracking full hoàn chỉnh               ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -16,6 +16,7 @@ local ScriptContext = game:GetService("ScriptContext")
 local player = Players.LocalPlayer
 local currentTween = nil
 local fastAttackConnection = nil
+local autoFarmThread = nil  -- ✅ Thread reference
 local oldPrint = print
 local oldWarn = warn
 
@@ -42,7 +43,7 @@ function Core.initConsole(Config)
     end
     
     print = function(... ) addLog(table.concat({...}, " "), "INFO") end
-    warn = function(... ) addLog(table.concat({...}, " "), "WARN") end
+    warn = function(...) addLog(table.concat({...}, " "), "WARN") end
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
     Core.logSuccess = function(msg) addLog(msg, "SUCCESS") end
@@ -50,7 +51,7 @@ function Core.initConsole(Config)
     
     ScriptContext.Error: Connect(function(message, stackTrace)
         addLog("RUNTIME ERROR: " .. message, "ERROR")
-        if stackTrace then addLog("Stack:  " .. stackTrace: sub(1, 200), "ERROR") end
+        if stackTrace then addLog("Stack: " .. stackTrace: sub(1, 200), "ERROR") end
     end)
     
     Core.safePcall = function(func, ...)
@@ -64,7 +65,7 @@ end
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
+    output = output ..  "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
@@ -92,12 +93,12 @@ end
 
 function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
-    output = output .. "Attack Attempts: " .. tostring(Config. CombatDebug.AttackAttempts) .. "\n"
-    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
-    output = output .. "Click Attempts: " .. tostring(Config. CombatDebug.ClickAttempts) .. "\n"
-    output = output .. "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
-    output = output .. "Weapon Equip Fails: " .. tostring(Config. CombatDebug.WeaponEquipFails) .. "\n"
-    output = output ..  "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
+    output = output .. "Attack Attempts: " .. tostring(Config.CombatDebug.AttackAttempts) .. "\n"
+    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug. SuccessfulHits) .. "\n"
+    output = output .. "Click Attempts: " .. tostring(Config.CombatDebug. ClickAttempts) .. "\n"
+    output = output ..  "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
+    output = output .. "Weapon Equip Fails: " .. tostring(Config.CombatDebug.WeaponEquipFails) .. "\n"
+    output = output .. "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
     
     local hitRate = Config.CombatDebug.AttackAttempts > 0 and 
         (Config.CombatDebug.SuccessfulHits / Config.CombatDebug. AttackAttempts * 100) or 0
@@ -111,13 +112,13 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core.getCharacter()
+function Core. getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
 function Core.getHRP()
     local char = Core.getCharacter()
-    return char and char:FindFirstChild("HumanoidRootPart")
+    return char and char: FindFirstChild("HumanoidRootPart")
 end
 
 function Core.getPlayerLevel()
@@ -134,9 +135,9 @@ function Core.getPlayerWeapons()
         local character = Core.getCharacter()
         
         for _, item in pairs(backpack:GetChildren()) do
-            if item: IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
-                table.insert(weapons, item.Name)
-                seen[item.Name] = true
+            if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
+                table.insert(weapons, item. Name)
+                seen[item. Name] = true
             end
         end
         
@@ -151,26 +152,15 @@ function Core.getPlayerWeapons()
     return weapons
 end
 
--- ✅ NEW: Equip bằng hotkey (phím số)
 function Core.pressKey(key)
     pcall(function()
-        VirtualInputManager: SendKeyEvent(true, key, false, game)
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
         task.wait(0.05)
         VirtualInputManager: SendKeyEvent(false, key, false, game)
     end)
 end
 
--- ✅ FIXED:  Equip weapon bằng hotkey thay vì EquipTool
-function Core. equipWeapon(weaponName, Config)
-    -- Map weapon -> hotkey
-    local hotkeyMap = {
-        ["Melee"] = Enum.KeyCode.One,      -- Phím 1
-        ["Sword"] = Enum.KeyCode.Two,       -- Phím 2 (first weapon slot)
-        ["Katana"] = Enum.KeyCode.Two,
-        ["Weapon"] = Enum.KeyCode. Two,
-    }
-    
-    -- Nếu là Melee, bấm phím 1
+function Core.equipWeapon(weaponName, Config)
     if weaponName == "Melee" or weaponName == "Combat" then
         Core.logDebug("[Equip] Pressing key 1 for Melee", Config)
         Core.pressKey(Enum.KeyCode.One)
@@ -179,12 +169,10 @@ function Core. equipWeapon(weaponName, Config)
         return true
     end
     
-    -- Với weapon khác, thử bấm phím 2 (weapon slot)
     Core.logDebug("[Equip] Pressing key 2 for " .. weaponName, Config)
     Core.pressKey(Enum.KeyCode.Two)
     task.wait(0.3)
     
-    -- Verify equipped
     local character = Core.getCharacter()
     local equippedTool = character:FindFirstChildOfClass("Tool")
     
@@ -219,7 +207,7 @@ function Core.tweenTo(targetPos, Config)
         
         currentTween = TweenService: Create(
             hrp,
-            TweenInfo.new(duration, Enum.EasingStyle.Linear),
+            TweenInfo.new(duration, Enum.EasingStyle. Linear),
             {CFrame = CFrame.new(targetPos)}
         )
         
@@ -245,7 +233,7 @@ function Core.smartTeleport(targetPos, forceTween, Config)
             Core.logDebug("[TP] Tween " .. distStr .. " studs", Config)
             Core.tweenTo(targetPos, Config)
         else
-            Core.logDebug("[TP] Instant TP " .. distStr .. " studs", Config)
+            Core.logDebug("[TP] Instant TP " .. distStr ..  " studs", Config)
             hrp.CFrame = CFrame.new(targetPos)
             task.wait(0.3)
         end
@@ -275,7 +263,7 @@ function Core.startFastAttack(Config)
                 
                 if humanoid and humanoid. Health > 0 then
                     local equippedTool = character:FindFirstChildOfClass("Tool")
-                    local weaponName = equippedTool and equippedTool. Name or "Melee"
+                    local weaponName = equippedTool and equippedTool.Name or "Melee"
                     
                     Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName, Config)
                     
@@ -304,9 +292,124 @@ function Core.stopFastAttack()
     if fastAttackConnection then
         fastAttackConnection:Disconnect()
         fastAttackConnection = nil
-        print("Fast Attack stopped")
+        print("⛔ Fast Attack stopped")
     end
 end
+
+-- ╔══════════════════════════════════════════════════════════╗
+-- ║  THREAD TRACKING SYSTEM - PROFESSIONAL                    ║
+-- ╚══════════════════════════════════════════════════════════╝
+
+-- ✅ Kiểm tra thread có đang chạy không
+function Core.isAutoFarmRunning()
+    if not autoFarmThread then
+        return false
+    end
+    
+    -- Check coroutine status
+    local success, status = pcall(function()
+        return coroutine.status(autoFarmThread)
+    end)
+    
+    if not success then
+        -- Thread không hợp lệ
+        autoFarmThread = nil
+        return false
+    end
+    
+    -- Nếu dead hoặc suspended → không còn chạy
+    if status == "dead" then
+        autoFarmThread = nil
+        return false
+    end
+    
+    return true
+end
+
+-- ✅ Lấy trạng thái thread
+function Core.getAutoFarmStatus()
+    if not autoFarmThread then
+        return "stopped"
+    end
+    
+    local success, status = pcall(function()
+        return coroutine.status(autoFarmThread)
+    end)
+    
+    if not success then
+        autoFarmThread = nil
+        return "error"
+    end
+    
+    return status -- "running", "suspended", "dead", "normal"
+end
+
+-- ✅ Stop auto farm - Kill thread an toàn
+function Core.stopAutoFarm()
+    if not autoFarmThread then
+        print("[Thread] No thread to stop")
+        return
+    end
+    
+    print("[Thread] Stopping auto farm thread...")
+    
+    -- Cancel thread
+    local success = pcall(function()
+        task.cancel(autoFarmThread)
+    end)
+    
+    if success then
+        print("[Thread] ✅ Thread cancelled successfully")
+    else
+        warn("[Thread] ⚠️ Failed to cancel thread, forcing cleanup")
+    end
+    
+    -- Cleanup
+    autoFarmThread = nil
+    Core.stopTween()
+    Core.stopFastAttack()
+    
+    print("⛔ Auto Farm stopped completely")
+end
+
+-- ✅ Start auto farm - Với full validation
+function Core.startAutoFarm(Config)
+    -- Check nếu đã có thread chạy
+    if Core.isAutoFarmRunning() then
+        warn("[Thread] ⚠️ Auto Farm already running!")
+        warn("[Thread] Status: " .. Core.getAutoFarmStatus())
+        return false
+    end
+    
+    -- Cleanup thread cũ nếu có
+    if autoFarmThread then
+        print("[Thread] Cleaning up old thread...")
+        Core.stopAutoFarm()
+        task.wait(0.5)
+    end
+    
+    -- Spawn thread mới
+    print("[Thread] Starting new auto farm thread...")
+    autoFarmThread = task.spawn(function()
+        Core.autoFarmLoop(Config)
+    end)
+    
+    -- Verify thread đã start
+    task.wait(0.2)
+    if Core.isAutoFarmRunning() then
+        print("[Thread] ✅ Thread started successfully")
+        print("[Thread] Status: " .. Core.getAutoFarmStatus())
+        return true
+    else
+        warn("[Thread] ❌ Failed to start thread")
+        autoFarmThread = nil
+        return false
+    end
+end
+
+-- ╔══════════════════════════════════════════════════════════╗
+-- ║  AUTO FARM FUNCTIONS                                       ║
+-- ╚══════════════════════════════════════════════════════════╝
 
 function Core.findBestQuest(Config)
     local level = Core.getPlayerLevel()
@@ -329,10 +432,10 @@ end
 
 function Core.hasActiveQuest()
     local success, result = Core.safePcall(function()
-        local questUI = player. PlayerGui:FindFirstChild("Main")
+        local questUI = player.PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
-            return quest and quest.Visible
+            return quest and quest. Visible
         end
         return false
     end)
@@ -344,7 +447,7 @@ function Core.acceptQuest(locationName, questIndex, Config)
     local success, result = Core.safePcall(function()
         local questPos = Config.QuestLocations[locationName]
         if not questPos then
-            Core. logError("[Quest] Location not found: " .. locationName)
+            Core.logError("[Quest] Location not found: " .. locationName)
             return false
         end
         
@@ -361,7 +464,7 @@ function Core.acceptQuest(locationName, questIndex, Config)
         end)
         
         if not invokeSuccess then
-            Core.logError("[Quest] StartQuest invoke failed: " .. tostring(invokeResult))
+            Core.logError("[Quest] StartQuest invoke failed:  " .. tostring(invokeResult))
             return false
         end
         
@@ -402,7 +505,7 @@ function Core.findNearestMob(mobName, Config)
         end
         
         if nearestMob then
-            Core. logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs", Config)
+            Core.logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs", Config)
         end
         
         return nearestMob
@@ -481,7 +584,7 @@ function Core.farmMob(mobName, count, Config)
                 local hrp = Core.getHRP()
                 if not hrp then
                     Core.logError("[TP] ❌ Player HRP not found!")
-                    Config.CombatDebug. PositionErrors = Config.CombatDebug.PositionErrors + 1
+                    Config.CombatDebug. PositionErrors = Config.CombatDebug. PositionErrors + 1
                     task.wait(1)
                     continue
                 end
@@ -497,7 +600,7 @@ function Core.farmMob(mobName, count, Config)
                 local tpOK = Core.smartTeleport(farmPos, false, Config)
                 if not tpOK then
                     Core.logError("[TP] ❌ Teleport failed!")
-                    Config.CombatDebug.PositionErrors = Config.CombatDebug.PositionErrors + 1
+                    Config.CombatDebug.PositionErrors = Config.CombatDebug. PositionErrors + 1
                     task.wait(1)
                     continue
                 end
@@ -601,7 +704,8 @@ end
 function Core.autoFarmLoop(Config)
     Core.logSuccess("🚀 AUTO FARM STARTED!")
     Core.logSuccess("⚔️ Weapon: " .. Config.Settings. SelectedWeapon)
-    Core.logSuccess("🔍 Debug: " .. (Config.Settings.DebugMode and "ON" or "OFF"))
+    Core.logSuccess("🔍 Debug: " .. (Config.Settings. DebugMode and "ON" or "OFF"))
+    print("[Thread] Loop started, thread ID: " .. tostring(autoFarmThread))
     
     while Config.Settings.Enabled do
         task.wait(1)
@@ -617,11 +721,11 @@ function Core.autoFarmLoop(Config)
         Config.Settings.CurrentQuest = quest. Name
         
         print(string.rep("=", 50))
-        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest. LevelReq) .. ")")
+        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest.LevelReq) .. ")")
         print("📍 Location: " .. location)
         print(string.rep("=", 50))
         
-        if Config. Settings.AutoQuest and not Core.hasActiveQuest() then
+        if Config.Settings.AutoQuest and not Core.hasActiveQuest() then
             if not Core.acceptQuest(location, questIndex, Config) then
                 warn("Failed to accept quest, retrying...")
                 task.wait(5)
@@ -641,7 +745,7 @@ function Core.autoFarmLoop(Config)
         
         if questSuccess then
             Config.Settings.QuestsCompleted = Config.Settings. QuestsCompleted + 1
-            Core.logSuccess("🎉 Quest done! Total: " .. tostring(Config. Settings.QuestsCompleted))
+            Core.logSuccess("🎉 Quest done! Total:  " .. tostring(Config.Settings.QuestsCompleted))
         else
             warn("Quest failed")
         end
@@ -649,8 +753,12 @@ function Core.autoFarmLoop(Config)
         task.wait(2)
     end
     
-    warn("⛔ AUTO FARM STOPPED")
+    warn("⛔ AUTO FARM LOOP ENDED")
     Config.Settings.CurrentQuest = "None"
+    print("[Thread] Loop finished naturally")
+    
+    -- ✅ Cleanup khi loop kết thúc
+    autoFarmThread = nil
     Core.stopTween()
     Core.stopFastAttack()
 end
