@@ -1,6 +1,5 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  GUI.LUA - PROFESSIONAL THREAD CONTROL                    ║
--- ║  ✅ Cách 1: Thread tracking full integration              ║
+-- ║  GUI. LUA - Debug Always On (No toggle)                   ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local GUI = {}
@@ -46,37 +45,24 @@ function GUI.create(Config, Core)
         print("Auto Equip:  " .. (state and "ON" or "OFF"))
     end)
     
-    FarmSection: NewToggle("Debug Mode", "Enable detailed logs", function(state)
-        Config.Settings.DebugMode = state
-        print("Debug Mode: " .. (state and "ON" or "OFF"))
-    end)
-    
-    -- ╔══════════════════════════════════════════════════════════╗
-    -- ║  AUTO FARM BUTTON - PROFESSIONAL THREAD CONTROL           ║
-    -- ╚══════════════════════════════════════════════════════════╝
+    -- ✅ Đã xóa toggle Debug Mode
     
     FarmSection:NewToggle("Auto Farm", "Start/Stop", function(state)
-        print("\n[Button] Auto Farm toggled:  " .. (state and "ON" or "OFF"))
+        print("\n[Button] Auto Farm toggled: " .. (state and "ON" or "OFF"))
         
         if state then
-            -- ═══ START AUTO FARM ═══
-            
-            -- Step 1: Check if already running
             if Core.isAutoFarmRunning() then
                 local status = Core.getAutoFarmStatus()
                 warn("⚠️ Auto Farm already running!")
                 warn("⚠️ Thread status: " .. status)
                 warn("⚠️ Please stop current farm first!")
                 
-                -- Force set config to false để sync với UI
-                Config.Settings. Enabled = false
+                Config.Settings.Enabled = false
                 return
             end
             
-            -- Step 2: Set config enabled
             Config.Settings.Enabled = true
             
-            -- Step 3: Start auto farm với validation
             Core.logSuccess("🚀 AUTO FARM ENABLED")
             print("[Button] Calling startAutoFarm()...")
             
@@ -88,13 +74,11 @@ function GUI.create(Config, Core)
                 return
             end
             
-            -- Step 4: Start fast attack if enabled
-            if Config.Settings. FastAttack then
+            if Config.Settings.FastAttack then
                 print("[Button] Starting Fast Attack...")
                 Core.startFastAttack(Config)
             end
             
-            -- Step 5: Verify running
             task.wait(0.5)
             if Core.isAutoFarmRunning() then
                 Core.logSuccess("✅ Auto Farm is now running")
@@ -104,24 +88,18 @@ function GUI.create(Config, Core)
             end
             
         else
-            -- ═══ STOP AUTO FARM ═══
-            
             warn("⛔ AUTO FARM DISABLED")
             
-            -- Step 1: Set config disabled
-            Config.Settings. Enabled = false
+            Config.Settings.Enabled = false
             
-            -- Step 2: Check if running
             if not Core.isAutoFarmRunning() then
                 print("[Button] No active farm to stop")
                 return
             end
             
-            -- Step 3: Stop auto farm
             print("[Button] Calling stopAutoFarm()...")
             Core.stopAutoFarm()
             
-            -- Step 4:  Verify stopped
             task.wait(0.5)
             if Core.isAutoFarmRunning() then
                 warn("⚠️ Thread may still be running!")
@@ -132,21 +110,17 @@ function GUI.create(Config, Core)
         end
     end)
     
-    -- ╔══════════════════════════════════════════════════════════╗
-    -- ║  THREAD STATUS BUTTON (DEBUG)                             ║
-    -- ╚══════════════════════════════════════════════════════════╝
-    
     FarmSection:NewButton("🔍 Check Thread Status", "Debug info", function()
         print("\n===== THREAD STATUS =====")
         print("Config.Settings.Enabled: " ..  tostring(Config.Settings. Enabled))
-        print("Is Running: " .. tostring(Core.isAutoFarmRunning()))
+        print("Is Running: " .. tostring(Core. isAutoFarmRunning()))
         print("Thread Status: " .. Core.getAutoFarmStatus())
         print("=========================\n")
     end)
     
     FarmSection:NewToggle("Auto Quest", "Auto accept", function(state)
         Config.Settings.AutoQuest = state
-        print("Auto Quest: " .. (state and "ON" or "OFF"))
+        print("Auto Quest: " ..  (state and "ON" or "OFF"))
     end)
     
     FarmSection:NewSlider("Farm Distance", "Height above mob", 30, 5, function(value)
@@ -161,7 +135,7 @@ function GUI.create(Config, Core)
             print("BEST QUEST")
             print("=======================")
             print("Quest: " .. quest.Name)
-            print("Level: " .. tostring(quest.LevelReq))
+            print("Level: " .. tostring(quest. LevelReq))
             print("Location: " .. location)
             Core.logSuccess("Best quest found!")
         else
@@ -173,8 +147,8 @@ function GUI.create(Config, Core)
     local CombatSection = CombatTab:NewSection("⚔️ Combat")
     
     CombatSection:NewToggle("Fast Attack", "Fast attack", function(state)
-        Config.Settings.FastAttack = state
-        print("Fast Attack:  " .. (state and "ON" or "OFF"))
+        Config.Settings. FastAttack = state
+        print("Fast Attack: " .. (state and "ON" or "OFF"))
         
         if state and Config.Settings. Enabled then
             Core.startFastAttack(Config)
@@ -204,7 +178,7 @@ function GUI.create(Config, Core)
     for _, island in ipairs(Config.IslandLocations) do
         TPSection: NewButton(island.name, "TP", function()
             print("Teleporting to " .. island.name)
-            if Core.smartTeleport(island.pos, true, Config) then
+            if Core.smartTeleport(island. pos, true, Config) then
                 Core.logSuccess("Arrived at " .. island.name)
             else
                 Core.logError("Teleport failed")
@@ -262,7 +236,7 @@ function GUI.create(Config, Core)
             setclipboard(Core.getCombatDebug(Config))
             Core.logSuccess("Combat debug copied!")
         else
-            print(Core.getCombatDebug(Config))
+            print(Core. getCombatDebug(Config))
         end
     end)
     
@@ -312,19 +286,19 @@ function GUI.create(Config, Core)
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.3 PRO")
     InfoSection:NewLabel("🧵 Thread Tracking System")
+    InfoSection:NewLabel("🔍 Debug Always On")
     InfoSection:NewLabel("👤 patrick31frag")
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("")
     InfoSection:NewLabel("✨ Features:")
     InfoSection:NewLabel("✅ Professional thread control")
-    InfoSection:NewLabel("✅ Coroutine status tracking")
-    InfoSection:NewLabel("✅ Safe thread cancellation")
-    InfoSection:NewLabel("✅ Duplicate prevention")
+    InfoSection:NewLabel("✅ Multi-method M1 attack")
+    InfoSection:NewLabel("✅ xpcall error tracking")
+    InfoSection:NewLabel("✅ Real-time debug logs")
     InfoSection:NewLabel("✅ Auto cleanup")
-    InfoSection:NewLabel("✅ Real-time validation")
     InfoSection:NewLabel("")
-    InfoSection:NewLabel("Use 'Check Thread Status'")
-    InfoSection:NewLabel("to debug farm state!")
+    InfoSection:NewLabel("Check Console tab")
+    InfoSection:NewLabel("for full debug logs!")
     
     print("✅ GUI loaded successfully!")
 end
