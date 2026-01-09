@@ -10,7 +10,6 @@ function GUI.create(Config, Core)
     local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
     local Window = Library. CreateLib("🏴‍☠️ Blox Fruits Auto Farm V2.3", "DarkTheme")
     
-    -- ===== TAB 1: MAIN =====
     local MainTab = Window:NewTab("Main")
     local FarmSection = MainTab:NewSection("⚔️ Auto Farm")
     
@@ -43,7 +42,7 @@ function GUI.create(Config, Core)
         print("Debug Mode:  " .. (state and "ON" or "OFF"))
     end)
     
-    FarmSection:NewToggle("Auto Farm", "Start/Stop", function(state)
+    FarmSection: NewToggle("Auto Farm", "Start/Stop", function(state)
         Config.Settings.Enabled = state
         
         if state then
@@ -61,7 +60,7 @@ function GUI.create(Config, Core)
     
     FarmSection:NewToggle("Auto Quest", "Auto accept", function(state)
         Config.Settings.AutoQuest = state
-        print("Auto Quest: " ..  (state and "ON" or "OFF"))
+        print("Auto Quest: " .. (state and "ON" or "OFF"))
     end)
     
     FarmSection:NewSlider("Farm Distance", "Height above mob", 30, 5, function(value)
@@ -76,7 +75,7 @@ function GUI.create(Config, Core)
             print("BEST QUEST")
             print("=======================")
             print("Quest: " .. quest.Name)
-            print("Level: " .. tostring(quest.LevelReq))
+            print("Level: " .. tostring(quest. LevelReq))
             print("Location: " .. location)
             Core.logSuccess("Best quest found!")
         else
@@ -84,7 +83,6 @@ function GUI.create(Config, Core)
         end
     end)
     
-    -- ===== TAB 2: COMBAT =====
     local CombatTab = Window:NewTab("Combat")
     local CombatSection = CombatTab:NewSection("⚔️ Combat")
     
@@ -114,7 +112,6 @@ function GUI.create(Config, Core)
         print("Tween Speed: " .. tostring(value))
     end)
     
-    -- ===== TAB 3: TELEPORT =====
     local TeleportTab = Window:NewTab("Teleport")
     local TPSection = TeleportTab:NewSection("🗺️ Teleport")
     
@@ -122,14 +119,13 @@ function GUI.create(Config, Core)
         TPSection: NewButton(island.name, "TP", function()
             print("Teleporting to " .. island.name)
             if Core.smartTeleport(island. pos, true, Config) then
-                Core. logSuccess("Arrived at " .. island.name)
+                Core.logSuccess("Arrived at " .. island.name)
             else
                 Core.logError("Teleport failed")
             end
         end)
     end
     
-    -- ===== TAB 4: STATS =====
     local StatsTab = Window:NewTab("Stats")
     local StatsSection = StatsTab:NewSection("📊 Stats")
     
@@ -137,8 +133,8 @@ function GUI.create(Config, Core)
         print("\n===========================")
         print("PLAYER STATS")
         print("===========================")
-        print("Player:  " .. game.Players.LocalPlayer.Name)
-        print("Level: " ..  tostring(Core.getPlayerLevel()))
+        print("Player:  " .. game. Players.LocalPlayer.Name)
+        print("Level: " .. tostring(Core.getPlayerLevel()))
         print("Weapon: " .. Config.Settings. SelectedWeapon)
         print("Quest: " .. Config.Settings.CurrentQuest)
         print("Mobs Killed: " .. tostring(Config.Settings.MobsKilled))
@@ -147,12 +143,11 @@ function GUI.create(Config, Core)
     end)
     
     StatsSection:NewButton("🔄 Reset Counters", "Reset", function()
-        Config.Settings.MobsKilled = 0
+        Config.Settings. MobsKilled = 0
         Config.Settings.QuestsCompleted = 0
         Core.logSuccess("Counters reset")
     end)
     
-    -- ===== TAB 5: CONSOLE =====
     local ConsoleTab = Window:NewTab("Console")
     local ConsoleSection = ConsoleTab:NewSection("🖥️ Console")
     
@@ -221,9 +216,8 @@ function GUI.create(Config, Core)
         end
     end)
     
-    -- ===== TAB 6: INFO =====
     local InfoTab = Window:NewTab("Info")
-    local InfoSection = InfoTab: NewSection("ℹ️ Info")
+    local InfoSection = InfoTab:NewSection("ℹ️ Info")
     
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.3")
@@ -231,7 +225,7 @@ function GUI.create(Config, Core)
     InfoSection:NewLabel("👤 patrick31frag")
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("")
-    InfoSection:NewLabel("✨ NEW Debug Features:")
+    InfoSection:NewLabel("✨ Features:")
     InfoSection:NewLabel("🔍 Position tracking")
     InfoSection:NewLabel("💥 Attack hit detection")
     InfoSection:NewLabel("⚔️ Weapon equip tracking")
