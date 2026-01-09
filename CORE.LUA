@@ -1,5 +1,8 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - FINAL FIX (HP Tracking + Multi Method)       ║
+-- ║  CORE.LUA - FIX 3 LỖI THEO CHECKLIST                      ║
+-- ║  ✅ LỖI 1:  mobToPlayer vector (mob → player)              ║
+-- ║  ✅ LỖI 2: sideOffset dùng HRP.RightVector                ║
+-- ║  ✅ LỖI 3:  Chỉ xoay mặt khi Dot < 0.98                    ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -21,10 +24,8 @@ local oldWarn = warn
 
 local attackStats = {
     totalAttempts = 0,
-    rigController = 0,
     remoteSuccess = 0,
-    clickButton = 0,
-    toolActivate = 0
+    clickButton = 0
 }
 
 function Core.initConsole(Config)
@@ -49,7 +50,7 @@ function Core.initConsole(Config)
         if logType == "ERROR" then oldWarn(output) else oldPrint(output) end
     end
     
-    print = function(... ) addLog(table.concat({...}, " "), "INFO") end
+    print = function(...  ) addLog(table.concat({...}, " "), "INFO") end
     warn = function(... ) addLog(table.concat({...}, " "), "WARN") end
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
@@ -58,7 +59,7 @@ function Core.initConsole(Config)
     
     ScriptContext.Error: Connect(function(message, stackTrace)
         addLog("RUNTIME ERROR: " .. message, "ERROR")
-        if stackTrace then addLog("Stack: " .. stackTrace:sub(1, 200), "ERROR") end
+        if stackTrace then addLog("Stack:  " .. stackTrace: sub(1, 200), "ERROR") end
     end)
     
     Core.safePcall = function(func, ...)
@@ -79,8 +80,8 @@ end
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
-    output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
+    output = output ..   "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
+    output = output ..  "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
     
@@ -101,27 +102,25 @@ function Core. getErrorsOnly(Config)
             output = output .. string.format("[%s] [%s] %s\n", log.time, log.type, log.message)
         end
     end
-    output = output .. "\nTotal: " .. count .. "\n"
+    output = output .. "\nTotal:  " .. count .. "\n"
     return output
 end
 
 function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
     output = output .. "Attack Attempts: " .. tostring(Config.CombatDebug.AttackAttempts) .. "\n"
-    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
-    output = output .. "Health Changes: " .. tostring(Config.CombatDebug.HealthChanges) .. "\n"
-    output = output .. "Weapon Equip Fails: " .. tostring(Config.CombatDebug.WeaponEquipFails) .. "\n"
-    output = output .. "Position Errors: " .. tostring(Config.CombatDebug.PositionErrors) .. "\n"
+    output = output .. "Successful Hits: " .. tostring(Config. CombatDebug.SuccessfulHits) .. "\n"
+    output = output .. "Health Changes: " .. tostring(Config. CombatDebug.HealthChanges) .. "\n"
+    output = output .. "Weapon Equip Fails: " .. tostring(Config. CombatDebug.WeaponEquipFails) .. "\n"
+    output = output ..  "Position Errors: " .. tostring(Config. CombatDebug.PositionErrors) .. "\n"
     
     local hitRate = Config.CombatDebug.AttackAttempts > 0 and 
         (Config.CombatDebug.SuccessfulHits / Config.CombatDebug. AttackAttempts * 100) or 0
     output = output .. "Hit Rate: " .. tostring(math.floor(hitRate)) .. "%\n"
     output = output .. "\n=== ATTACK METHOD STATS ===\n"
-    output = output .. "Total Attempts: " ..  attackStats.totalAttempts .. "\n"
-    output = output ..  "RigController: " .. attackStats.rigController .. "\n"
-    output = output .. "Remote Combat: " .. attackStats.remoteSuccess .. "\n"
-    output = output ..  "ClickButton1: " ..  attackStats.clickButton .. "\n"
-    output = output .. "Tool Activate: " .. attackStats.toolActivate .. "\n"
+    output = output .. "Total Attempts: " .. attackStats.totalAttempts .. "\n"
+    output = output ..  "Remote Success: " .. attackStats.remoteSuccess .. "\n"
+    output = output .. "ClickButton1: " .. attackStats.clickButton .. "\n"
     output = output .. "==============================\n"
     return output
 end
@@ -131,7 +130,7 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core. getCharacter()
+function Core.getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
@@ -152,7 +151,7 @@ function Core.getPlayerWeapons()
     local seen = {["Melee"] = true}
     
     Core.safePcall(function()
-        local backpack = player.Backpack
+        local backpack = player. Backpack
         local character = Core.getCharacter()
         
         for _, item in pairs(backpack:GetChildren()) do
@@ -213,7 +212,7 @@ function Core.stopTween()
     end
 end
 
-function Core.tweenTo(targetPos, Config)
+function Core. tweenTo(targetPos, Config)
     local success = Core.safePcall(function()
         local hrp = Core.getHRP()
         if not hrp then
@@ -228,7 +227,7 @@ function Core.tweenTo(targetPos, Config)
         
         currentTween = TweenService: Create(
             hrp,
-            TweenInfo.new(duration, Enum.EasingStyle.Linear),
+            TweenInfo.new(duration, Enum.EasingStyle. Linear),
             {CFrame = CFrame.new(targetPos)}
         )
         
@@ -255,7 +254,7 @@ function Core.smartTeleport(targetPos, forceTween, Config)
             Core.tweenTo(targetPos, Config)
         else
             Core.logDebug("[TP] Instant TP " .. distStr ..  " studs")
-            hrp.CFrame = CFrame.new(targetPos)
+            hrp.CFrame = CFrame. new(targetPos)
             task.wait(0.3)
         end
         
@@ -268,53 +267,24 @@ end
 function Core.enableHaki(Config)
     if not Config.Settings.AutoHaki then return end
     Core.safePcall(function()
-        ReplicatedStorage.Remotes. CommF_:InvokeServer("Buso")
+        ReplicatedStorage. Remotes.CommF_:InvokeServer("Buso")
         Core.logDebug("[Haki] Enabled")
     end)
 end
-
--- ╔══════════════════════════════════════════════════════════╗
--- ║  ATTACK - MULTI METHOD                                    ║
--- ╚══════════════════════════════════════════════════════════╝
 
 function Core.performAttack(Config)
     Core.safePcall(function()
         attackStats.totalAttempts = attackStats.totalAttempts + 1
         
-        -- Method 1: RigControllerEvent
-        local rigOk = Core.safePcall(function()
-            local rig = ReplicatedStorage: FindFirstChild("RigControllerEvent")
-            if rig then
-                rig:FireServer("attack")
-                attackStats.rigController = attackStats.rigController + 1
-                Core.logDebug("[Attack] ✅ RigController sent")
-                return true
-            end
-            return false
-        end)
-        
-        -- Method 2: Remote Combat
         Core.safePcall(function()
             ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
             attackStats.remoteSuccess = attackStats.remoteSuccess + 1
         end)
         
-        -- Method 3: VirtualUser ClickButton1
         Core.safePcall(function()
             game:GetService("VirtualUser"):ClickButton1(Vector2.new(0,0))
             attackStats.clickButton = attackStats.clickButton + 1
         end)
-        
-        -- Method 4: Tool: Activate()
-        local character = Core.getCharacter()
-        local tool = character and character:FindFirstChildOfClass("Tool")
-        
-        if tool and tool. Activate then
-            Core.safePcall(function()
-                tool: Activate()
-                attackStats. toolActivate = attackStats.toolActivate + 1
-            end)
-        end
         
         Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
     end)
@@ -342,34 +312,21 @@ do
                 local character = Core.getCharacter()
                 local humanoid = character and character:FindFirstChild("Humanoid")
                 
-                if not (humanoid and humanoid.Health > 0) then
+                if not (humanoid and humanoid. Health > 0) then
                     return
                 end
-                
-                -- Multi method
-                Core.safePcall(function()
-                    local rig = ReplicatedStorage:FindFirstChild("RigControllerEvent")
-                    if rig then rig:FireServer("attack") end
-                end)
                 
                 Core.safePcall(function()
                     ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
                 end)
                 
                 Core.safePcall(function()
-                    game:GetService("VirtualUser"):ClickButton1(Vector2.new(0,0))
+                    game: GetService("VirtualUser"):ClickButton1(Vector2.new(0,0))
                 end)
-                
-                local tool = character: FindFirstChildOfClass("Tool")
-                if tool and tool. Activate then
-                    Core.safePcall(function()
-                        tool:Activate()
-                    end)
-                end
             end)
         end)
         
-        print("✅ Fast Attack started (Multi-method)")
+        print("✅ Fast Attack started")
     end
 end
 
@@ -467,7 +424,7 @@ function Core.findBestQuest(Config)
     for locationName, quests in pairs(Config.QuestData) do
         for idx, quest in ipairs(quests) do
             if quest.LevelReq <= level then
-                if not bestQuest or quest.LevelReq > bestQuest.LevelReq then
+                if not bestQuest or quest.LevelReq > bestQuest. LevelReq then
                     bestQuest = quest
                     bestLocation = locationName
                     bestIndex = idx
@@ -481,7 +438,7 @@ end
 
 function Core.hasActiveQuest()
     local ok, result = Core.safePcall(function()
-        local questUI = player.PlayerGui:FindFirstChild("Main")
+        local questUI = player. PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
             return quest and quest. Visible
@@ -496,7 +453,7 @@ function Core.acceptQuest(locationName, questIndex, Config)
     local ok, result = Core.safePcall(function()
         local questPos = Config.QuestLocations[locationName]
         if not questPos then
-            Core.logError("[Quest] Location not found: " .. locationName)
+            Core.logError("[Quest] Location not found: " ..  locationName)
             return false
         end
         
@@ -508,7 +465,7 @@ function Core.acceptQuest(locationName, questIndex, Config)
         
         task.wait(0.5)
         
-        local invokeOk, invokeResult = Core.safePcall(function()
+        local invokeOk, invokeResult = Core. safePcall(function()
             return ReplicatedStorage.Remotes. CommF_:InvokeServer("StartQuest", locationName, questIndex)
         end)
         
@@ -536,10 +493,10 @@ function Core.findNearestMob(mobName, Config)
         local hrp = Core.getHRP()
         if not hrp then return nil end
         
-        local nearestMob, nearestDistance = nil, math.huge
+        local nearestMob, nearestDistance = nil, math. huge
         
         for _, enemy in pairs(workspace. Enemies:GetChildren()) do
-            if enemy.Name == mobName then
+            if enemy. Name == mobName then
                 local enemyHRP = enemy:FindFirstChild("HumanoidRootPart")
                 local enemyHumanoid = enemy:FindFirstChild("Humanoid")
                 
@@ -554,7 +511,7 @@ function Core.findNearestMob(mobName, Config)
         end
         
         if nearestMob then
-            Core.logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs")
+            Core. logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs")
         end
         
         return nearestMob
@@ -563,7 +520,10 @@ function Core.findNearestMob(mobName, Config)
     return ok and mob or nil
 end
 
--- ✅ FIX: HP Tracking chính xác
+-- ╔══════════════════════════════════════════════════════════╗
+-- ║  FARM MOB - FIX 3 LỖI THEO CHECKLIST                      ║
+-- ╚══════════════════════════════════════════════════════════╝
+
 function Core.farmMob(mobName, count, Config)
     local ok = Core.safePcall(function()
         print("🎯 Farming " .. mobName .. " x" .. tostring(count))
@@ -585,17 +545,11 @@ function Core.farmMob(mobName, count, Config)
             
             if mob then
                 local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                local mobHumanoid = mob: FindFirstChild("Humanoid")
+                local mobHumanoid = mob:FindFirstChild("Humanoid")
                 local mobHead = mob:FindFirstChild("Head")
                 
-                if not mobHRP then
-                    Core.logError("[Mob] ❌ HumanoidRootPart not found for " .. mobName)
-                    task.wait(1)
-                    continue
-                end
-                
-                if not mobHumanoid then
-                    Core.logError("[Mob] ❌ Humanoid not found for " .. mobName)
+                if not mobHRP or not mobHumanoid then
+                    Core.logError("[Mob] ❌ Missing HRP or Humanoid for " .. mobName)
                     task.wait(1)
                     continue
                 end
@@ -606,31 +560,37 @@ function Core.farmMob(mobName, count, Config)
                     continue
                 end
                 
-                Config.CombatDebug.LastMobHealth = mobHumanoid.Health
                 print("[Mob] Target HP: " .. math.floor(mobHumanoid.Health))
                 
                 local targetPos = mobHead and mobHead.Position or mobHRP.Position
-                
                 local hrp = Core.getHRP()
+                
                 if not hrp then
                     Core.logError("[TP] ❌ Player HRP not found!")
-                    Config.CombatDebug. PositionErrors = Config.CombatDebug. PositionErrors + 1
                     task.wait(1)
                     continue
                 end
                 
-                local direction = (hrp.Position - targetPos).Unit
-                local behindMob = targetPos + direction * math.min(Config.Settings.FarmDistance, 6)
-                local side = Vector3.new(-direction.Z, 0, direction.X).Unit * 2
-                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob.Z) + side
+                -- ✅ FIX LỖI 1: mobToPlayer vector (hướng từ mob → player)
+                local mobToPlayer = (hrp.Position - targetPos).Unit
                 
-                Core.logDebug("[TP] Target mob pos: " .. tostring(targetPos))
-                Core.logDebug("[TP] Farm pos calculated: " .. tostring(farmPos))
+                -- Behind mob:  6 studs
+                local behindMob = targetPos + mobToPlayer * 6
                 
+                -- ✅ FIX LỖI 2: Side offset dùng HRP.RightVector
+                local sideOffset = hrp.CFrame.RightVector * 2
+                
+                -- Cao:  +2. 5 studs
+                local farmPos = behindMob + sideOffset + Vector3.new(0, 2.5, 0)
+                
+                Core.logDebug("[TP] Target:  " .. tostring(targetPos))
+                Core.logDebug("[TP] Farm pos: " .. tostring(farmPos))
+                Core.logDebug("[TP] Distance: " .. tostring(math. floor((farmPos - targetPos).Magnitude)))
+                
+                -- ✅ Teleport 1 lần duy nhất
                 local tpOK = Core.smartTeleport(farmPos, false, Config)
                 if not tpOK then
                     Core.logError("[TP] ❌ Teleport failed!")
-                    Config.CombatDebug.PositionErrors = Config.CombatDebug.PositionErrors + 1
                     task.wait(1)
                     continue
                 end
@@ -640,10 +600,10 @@ function Core.farmMob(mobName, count, Config)
                 hrp = Core.getHRP()
                 if hrp then
                     local actualDistance = (hrp.Position - targetPos).Magnitude
-                    print("[TP] ✅ Teleported!  Distance to mob: " .. math.floor(actualDistance) .. " studs")
+                    print("[TP] ✅ Teleported!  Distance: " .. math.floor(actualDistance) .. " studs")
                     
                     if actualDistance > 15 then
-                        Core.logError("[TP] ⚠️ Too far from mob:  " .. math.floor(actualDistance) .. " studs")
+                        Core.logError("[TP] ⚠️ Too far:  " .. math.floor(actualDistance) .. " studs")
                     end
                 else
                     Core.logError("[TP] ❌ HRP lost after teleport!")
@@ -653,78 +613,74 @@ function Core.farmMob(mobName, count, Config)
                 Core.enableHaki(Config)
                 task.wait(0.2)
                 
-                local attackLoopCount = 0
-                
                 print("[Combat] 🗡️ Starting attack loop...")
                 
+                local attackCount = 0
+                local lastAttackTime = tick()
+                local ATTACK_COOLDOWN = 0.06
+                
                 while mob and mob.Parent and Config.Settings.Enabled do
-                    -- ✅ Check mob còn tồn tại
                     if not mobHumanoid or not mobHumanoid.Parent or mobHumanoid.Health <= 0 then
                         break
                     end
                     
-                    attackLoopCount = attackLoopCount + 1
+                    attackCount = attackCount + 1
                     Config.CombatDebug.AttackAttempts = Config.CombatDebug.AttackAttempts + 1
                     
                     Core.safePcall(function()
                         local hrp = Core.getHRP()
-                        
-                        -- ✅ Lưu HP trước attack
-                        local hpBefore = mobHumanoid. Health
+                        local hpBefore = mobHumanoid.Health
                         
                         if hrp and mobHRP and mobHRP.Parent then
-                            if attackLoopCount % 10 == 0 then
-                                local currentDistance = (hrp.Position - mobHRP.Position).Magnitude
-                                if currentDistance > 12 then
-                                    Core.logDebug("[Combat] Re-positioning (dist: " .. math.floor(currentDistance) .. ")")
-                                    local newPos = mobHRP.Position + (hrp.Position - mobHRP. Position).Unit * 5
-                                    hrp.CFrame = CFrame. new(newPos)
-                                    task.wait(0.2)
-                                end
+                            -- ✅ FIX LỖI 3: Chỉ xoay mặt khi góc lệch lớn (Dot < 0.98)
+                            local dir = (mobHRP.Position - hrp. Position).Unit
+                            local look = hrp.CFrame.LookVector
+                            
+                            if look: Dot(dir) < 0.98 then
+                                hrp.CFrame = CFrame. new(hrp.Position, mobHRP.Position)
+                                Core.logDebug("[Combat] Rotated to face mob")
                             end
                             
-                            local lookAt = CFrame.new(hrp.Position, mobHRP.Position)
-                            hrp.CFrame = lookAt
+                            Core.logDebug("[Combat] Attack #" .. tostring(attackCount))
                             
-                            Core.logDebug("[Combat] Attack loop #" .. tostring(attackLoopCount))
-                            
-                            Core.performAttack(Config)
-                            
-                            -- ✅ Đợi frame rồi check HP
-                            task.wait(0.1)
-                            
-                            -- ✅ Check mob còn tồn tại trước khi đọc HP
-                            if mobHumanoid and mobHumanoid.Parent then
-                                local hpAfter = mobHumanoid.Health
+                            -- Attack với cooldown
+                            local now = tick()
+                            if now - lastAttackTime >= ATTACK_COOLDOWN then
+                                Core.performAttack(Config)
+                                lastAttackTime = now
                                 
-                                if hpAfter < hpBefore then
-                                    local damage = hpBefore - hpAfter
-                                    Config.CombatDebug. HealthChanges = Config.CombatDebug.HealthChanges + 1
-                                    Config.CombatDebug. SuccessfulHits = Config.CombatDebug.SuccessfulHits + 1
-                                    Config.CombatDebug.LastMobHealth = hpAfter
+                                task.wait(0.03)
+                                
+                                if mobHumanoid and mobHumanoid.Parent then
+                                    local hpAfter = mobHumanoid.Health
                                     
-                                    print("[Combat] 💥 HIT!  Damage: " .. math.floor(damage) .. " | HP: " .. math.floor(hpAfter))
-                                else
-                                    if attackLoopCount % 20 == 0 then
-                                        Core.logError("[Combat] ⚠️ No HP change after 20 attacks!  HP: " .. math.floor(hpAfter))
+                                    if hpAfter < hpBefore then
+                                        local damage = hpBefore - hpAfter
+                                        Config.CombatDebug. HealthChanges = Config.CombatDebug.HealthChanges + 1
+                                        Config.CombatDebug. SuccessfulHits = Config.CombatDebug.SuccessfulHits + 1
+                                        
+                                        print("[Combat] 💥 HIT! Damage: " .. math.floor(damage) .. " | HP: " .. math.floor(hpAfter))
+                                    else
+                                        if attackCount % 30 == 0 then
+                                            Core.logError("[Combat] ⚠️ No damage after 30 attacks!  HP: " .. math.floor(hpAfter))
+                                        end
                                     end
                                 end
                             end
                         else
                             Core.logError("[Combat] ❌ HRP or MobHRP lost!")
-                            Config.CombatDebug. PositionErrors = Config.CombatDebug.PositionErrors + 1
+                            break
                         end
                     end)
                     
-                    task.wait(0.15)
+                    task.wait(0.03)
                     
-                    if attackLoopCount > 200 then
-                        Core.logError("[Combat] ⏱️ Attack loop timeout")
+                    if attackCount > 300 then
+                        Core.logError("[Combat] ⏱️ Timeout (300 attacks)")
                         break
                     end
                 end
                 
-                -- ✅ Check nếu mob chết
                 if not mob. Parent or not mobHumanoid or not mobHumanoid.Parent or mobHumanoid.Health <= 0 then
                     killed = killed + 1
                     Config.Settings.MobsKilled = Config.Settings.MobsKilled + 1
@@ -734,7 +690,7 @@ function Core.farmMob(mobName, count, Config)
                 task.wait(0.5)
             else
                 if attempts % 10 == 0 then
-                    Core.logDebug("[Farm] ⏳ Waiting for " .. mobName .. " to spawn (" .. tostring(attempts) .. "/" .. tostring(maxAttempts) .. ")")
+                    Core.logDebug("[Farm] ⏳ Waiting for " .. mobName .. " (" .. tostring(attempts) .. "/" .. tostring(maxAttempts) .. ")")
                 end
                 task.wait(2)
             end
@@ -755,6 +711,7 @@ end
 function Core.autoFarmLoop(Config)
     Core.logSuccess("🚀 AUTO FARM STARTED!")
     Core.logSuccess("⚔️ Weapon: " .. Config.Settings. SelectedWeapon)
+    Core.logSuccess("✅ Fixed 3 lỗi theo checklist")
     print("[Thread] Loop started")
     
     while Config.Settings.Enabled do
@@ -771,7 +728,7 @@ function Core.autoFarmLoop(Config)
         Config.Settings.CurrentQuest = quest. Name
         
         print(string.rep("=", 50))
-        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest.LevelReq) .. ")")
+        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest. LevelReq) .. ")")
         print("📍 Location: " .. location)
         print(string.rep("=", 50))
         
@@ -795,7 +752,7 @@ function Core.autoFarmLoop(Config)
         
         if questSuccess then
             Config.Settings.QuestsCompleted = Config.Settings. QuestsCompleted + 1
-            Core.logSuccess("🎉 Quest done! Total:  " .. tostring(Config.Settings.QuestsCompleted))
+            Core.logSuccess("🎉 Quest done! Total: " .. tostring(Config. Settings.QuestsCompleted))
         else
             warn("Quest failed")
         end
