@@ -1,6 +1,8 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - FIX CUỐI:  Bỏ UI focus check                  ║
--- ║  ✅ Remote + Tool không cần check UI                      ║
+-- ║  CORE.LUA - FINAL VERSION (No UI Check)                  ║
+-- ║  ✅ Chỉ dùng Remote + Tool:Activate()                     ║
+-- ║  ✅ Không check UI focus                                  ║
+-- ║  ✅ Debug đầy đủ                                          ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -20,17 +22,18 @@ local autoFarmThread = nil
 local oldPrint = print
 local oldWarn = warn
 
+-- ✅ Stats đơn giản
 local attackStats = {
+    totalAttempts = 0,
     remoteSuccess = 0,
     remoteFailed = 0,
-    toolActivate = 0,
-    totalAttempts = 0
+    toolActivate = 0
 }
 
 function Core.initConsole(Config)
     local function addLog(message, logType)
         logType = logType or "INFO"
-        local timestamp = os.date("%H:%M:%S")
+        local timestamp = os. date("%H:%M:%S")
         
         table.insert(Config.ConsoleLog, {
             time = timestamp,
@@ -79,14 +82,14 @@ end
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
+    output = output .. "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
     
     for _, log in ipairs(Config.ConsoleLog) do
         local prefix = ({ERROR = "[❌]", WARN = "[⚠️]", SUCCESS = "[✅]", INFO = "[ℹ️]", DEBUG = "[🔍]"})[log.type] or "[ℹ️]"
-        output = output .. string.format("[%s] %s %s\n", log.time, prefix, log.message)
+        output = output ..  string.format("[%s] %s %s\n", log.time, prefix, log.message)
     end
     
     return output
@@ -101,26 +104,25 @@ function Core. getErrorsOnly(Config)
             output = output .. string.format("[%s] [%s] %s\n", log.time, log.type, log.message)
         end
     end
-    output = output .. "\nTotal: " .. count .. "\n"
+    output = output .. "\nTotal:  " .. count .. "\n"
     return output
 end
 
 function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
     output = output .. "Attack Attempts: " .. tostring(Config.CombatDebug.AttackAttempts) .. "\n"
-    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug. SuccessfulHits) .. "\n"
-    output = output .. "Click Attempts: " ..  tostring(Config.CombatDebug.ClickAttempts) .. "\n"
-    output = output .. "Health Changes: " .. tostring(Config.CombatDebug.HealthChanges) .. "\n"
+    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
+    output = output .. "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
     output = output .. "Weapon Equip Fails: " .. tostring(Config.CombatDebug.WeaponEquipFails) .. "\n"
-    output = output .. "Position Errors: " .. tostring(Config.CombatDebug.PositionErrors) .. "\n"
+    output = output .. "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
     
     local hitRate = Config.CombatDebug.AttackAttempts > 0 and 
-        (Config.CombatDebug. SuccessfulHits / Config.CombatDebug.AttackAttempts * 100) or 0
+        (Config.CombatDebug.SuccessfulHits / Config.CombatDebug. AttackAttempts * 100) or 0
     output = output .. "Hit Rate: " .. tostring(math.floor(hitRate)) .. "%\n"
     output = output .. "\n=== ATTACK METHOD STATS ===\n"
     output = output .. "Total Attempts: " .. attackStats.totalAttempts .. "\n"
     output = output ..  "Remote Success: " .. attackStats.remoteSuccess .. "\n"
-    output = output .. "Remote Failed: " .. attackStats. remoteFailed .. "\n"
+    output = output .. "Remote Failed: " .. attackStats.remoteFailed .. "\n"
     output = output .. "Tool Activate: " .. attackStats.toolActivate .. "\n"
     output = output .. "==============================\n"
     return output
@@ -131,7 +133,7 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core.getCharacter()
+function Core. getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
@@ -157,8 +159,8 @@ function Core.getPlayerWeapons()
         
         for _, item in pairs(backpack:GetChildren()) do
             if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
-                table.insert(weapons, item.Name)
-                seen[item.Name] = true
+                table.insert(weapons, item. Name)
+                seen[item. Name] = true
             end
         end
         
@@ -255,7 +257,7 @@ function Core.smartTeleport(targetPos, forceTween, Config)
             Core.tweenTo(targetPos, Config)
         else
             Core.logDebug("[TP] Instant TP " .. distStr ..  " studs")
-            hrp.CFrame = CFrame.new(targetPos)
+            hrp.CFrame = CFrame. new(targetPos)
             task.wait(0.3)
         end
         
@@ -274,43 +276,43 @@ function Core.enableHaki(Config)
 end
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  ATTACK - BỎ CHECK UI (Remote + Tool không cần)          ║
+-- ║  ATTACK - CHỈ DÙNG REMOTE + TOOL (KHÔNG CHECK UI)        ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 function Core.performAttack(Config)
     Core.safePcall(function()
         attackStats.totalAttempts = attackStats.totalAttempts + 1
         
-        -- 1) Remote Combat (chính)
+        -- 1) Remote Combat
         local remoteOk = Core.safePcall(function()
-            ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
+            ReplicatedStorage.Remotes.CommF_:InvokeServer("Combat")
         end)
         
         if remoteOk then
             attackStats.remoteSuccess = attackStats.remoteSuccess + 1
-            Core.logDebug("[Attack] ✅ Remote Combat sent")
+            Core.logDebug("[Attack] ✅ Remote sent")
         else
-            attackStats.remoteFailed = attackStats.remoteFailed + 1
-            Core. logError("[Attack] ❌ Remote Combat failed")
+            attackStats. remoteFailed = attackStats.remoteFailed + 1
+            Core.logError("[Attack] ❌ Remote failed")
         end
         
-        -- 2) Tool:Activate() (backup)
+        -- 2) Tool:Activate()
         local character = Core.getCharacter()
-        local tool = character and character:FindFirstChildOfClass("Tool")
+        local tool = character and character: FindFirstChildOfClass("Tool")
         
         if tool and tool. Activate then
             Core.safePcall(function()
                 tool: Activate()
             end)
             attackStats.toolActivate = attackStats.toolActivate + 1
-            Core.logDebug("[Attack] ✅ Tool: Activate() called")
+            Core.logDebug("[Attack] ✅ Tool activated")
         end
         
         Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
     end)
 end
 
--- Fast Attack với throttle
+-- Fast Attack
 do
     local lastFastAttack = 0
     local FAST_ATTACK_INTERVAL = 0.15
@@ -318,7 +320,7 @@ do
     function Core.startFastAttack(Config)
         if fastAttackConnection then return end
         
-        fastAttackConnection = RunService. Heartbeat:Connect(function()
+        fastAttackConnection = RunService.Heartbeat:Connect(function()
             if not (Config.Settings.FastAttack and Config.Settings. Enabled) then
                 return
             end
@@ -333,30 +335,26 @@ do
                 local character = Core.getCharacter()
                 local humanoid = character and character:FindFirstChild("Humanoid")
                 
-                if not (humanoid and humanoid. Health > 0) then
+                if not (humanoid and humanoid.Health > 0) then
                     return
                 end
                 
-                local equippedTool = character:FindFirstChildOfClass("Tool")
-                local weaponName = equippedTool and equippedTool. Name or "Melee"
-                
-                Core.logDebug("[FastAttack] Weapon: " .. weaponName)
-                
-                -- Remote Combat
+                -- Remote
                 Core.safePcall(function()
                     ReplicatedStorage.Remotes.CommF_:InvokeServer("Combat")
                 end)
                 
-                -- Tool: Activate()
-                if equippedTool and equippedTool.Activate then
+                -- Tool
+                local tool = character: FindFirstChildOfClass("Tool")
+                if tool and tool. Activate then
                     Core.safePcall(function()
-                        equippedTool:Activate()
+                        tool:Activate()
                     end)
                 end
             end)
         end)
         
-        print("✅ Fast Attack started (Remote + Tool mode)")
+        print("✅ Fast Attack started")
     end
 end
 
@@ -369,7 +367,7 @@ function Core.stopFastAttack()
 end
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  THREAD TRACKING SYSTEM                                    ║
+-- ║  THREAD TRACKING                                          ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 function Core.isAutoFarmRunning()
@@ -452,7 +450,7 @@ function Core.startAutoFarm(Config)
 end
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  AUTO FARM FUNCTIONS                                       ║
+-- ║  AUTO FARM FUNCTIONS                                      ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 function Core.findBestQuest(Config)
@@ -479,7 +477,7 @@ function Core.hasActiveQuest()
         local questUI = player.PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
-            return quest and quest.Visible
+            return quest and quest. Visible
         end
         return false
     end)
@@ -534,7 +532,7 @@ function Core.findNearestMob(mobName, Config)
         local nearestMob, nearestDistance = nil, math.huge
         
         for _, enemy in pairs(workspace. Enemies:GetChildren()) do
-            if enemy.Name == mobName then
+            if enemy. Name == mobName then
                 local enemyHRP = enemy:FindFirstChild("HumanoidRootPart")
                 local enemyHumanoid = enemy:FindFirstChild("Humanoid")
                 
@@ -564,7 +562,7 @@ function Core.farmMob(mobName, count, Config)
         
         if Config.Settings.AutoEquipWeapon then
             print("[Farm] Auto equipping weapon:  " .. Config.Settings. SelectedWeapon)
-            Core.equipWeapon(Config. Settings.SelectedWeapon, Config)
+            Core.equipWeapon(Config.Settings.SelectedWeapon, Config)
             task.wait(0.2)
         end
         
@@ -616,7 +614,7 @@ function Core.farmMob(mobName, count, Config)
                 local direction = (hrp.Position - targetPos).Unit
                 local behindMob = targetPos + direction * math.min(Config.Settings.FarmDistance, 6)
                 local side = Vector3.new(-direction.Z, 0, direction.X).Unit * 2
-                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob.Z) + side
+                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob. Z) + side
                 
                 Core.logDebug("[TP] Target mob pos: " .. tostring(targetPos))
                 Core.logDebug("[TP] Farm pos calculated: " .. tostring(farmPos))
@@ -714,7 +712,7 @@ function Core.farmMob(mobName, count, Config)
         end
         
         if killed >= count then
-            Core.logSuccess("[Farm] ✅ Completed:  " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
+            Core.logSuccess("[Farm] ✅ Completed: " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
             return true
         else
             Core.logError("[Farm] ❌ Only killed " .. tostring(killed) .. "/" .. tostring(count) .. " " .. mobName)
