@@ -4,7 +4,6 @@
 
 local Config = {}
 
--- ========== QUEST DATA ==========
 Config.QuestData = {
     ["BanditQuest1"] = {{LevelReq = 0, Name = "Bandits", Task = {Bandit = 5}, Reward = {Beli = 350, Exp = 300}}},
     ["JungleQuest"] = {
@@ -44,8 +43,8 @@ Config.QuestData = {
         {LevelReq = 275, Name = "Gladiator", Task = {Gladiator = 8}, Reward = {Beli = 7500, Exp = 1300000}}
     },
     ["MagmaQuest"] = {
-        {LevelReq = 300, Name = "Mil.  Soldier", Task = {["Military Soldier"] = 7}, Reward = {Beli = 8250, Exp = 1700000}},
-        {LevelReq = 325, Name = "Mil. Spy", Task = {["Military Spy"] = 8}, Reward = {Beli = 8500, Exp = 2000000}},
+        {LevelReq = 300, Name = "Mil.   Soldier", Task = {["Military Soldier"] = 7}, Reward = {Beli = 8250, Exp = 1700000}},
+        {LevelReq = 325, Name = "Mil.  Spy", Task = {["Military Spy"] = 8}, Reward = {Beli = 8500, Exp = 2000000}},
         {LevelReq = 350, Name = "Magma Admiral", Task = {["Magma Admiral"] = 1}, Reward = {Beli = 15000, Exp = 3000000}}
     },
     ["FishmanQuest"] = {
