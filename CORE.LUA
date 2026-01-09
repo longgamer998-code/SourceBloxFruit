@@ -1,8 +1,6 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - FINAL FIX:  Melee + No Duplicate + Debug      ║
--- ║  ✅ Fixed:  Đổi Combat → Melee                             ║
--- ║  ✅ Fixed: Bỏ Tool và Combat trùng                        ║
--- ║  ✅ Fixed: Fast Attack với runtime debug                  ║
+-- ║  CORE.LUA - HOTKEY EQUIP FIX                              ║
+-- ║  ✅ Fixed: Auto equip bằng hotkey (1=Melee, 2=Weapon)     ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -10,6 +8,7 @@ local Core = {}
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ScriptContext = game:GetService("ScriptContext")
@@ -47,11 +46,11 @@ function Core.initConsole(Config)
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
     Core.logSuccess = function(msg) addLog(msg, "SUCCESS") end
-    Core.logDebug = function(msg, Config) if Config.Settings. DebugMode then addLog(msg, "DEBUG") end end
+    Core.logDebug = function(msg, Config) if Config.Settings.DebugMode then addLog(msg, "DEBUG") end end
     
     ScriptContext.Error: Connect(function(message, stackTrace)
         addLog("RUNTIME ERROR: " .. message, "ERROR")
-        if stackTrace then addLog("Stack: " .. stackTrace: sub(1, 200), "ERROR") end
+        if stackTrace then addLog("Stack:  " .. stackTrace: sub(1, 200), "ERROR") end
     end)
     
     Core.safePcall = function(func, ...)
@@ -65,7 +64,7 @@ end
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
+    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
@@ -94,9 +93,9 @@ end
 function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
     output = output .. "Attack Attempts: " .. tostring(Config. CombatDebug.AttackAttempts) .. "\n"
-    output = output .. "Successful Hits: " .. tostring(Config. CombatDebug.SuccessfulHits) .. "\n"
-    output = output .. "Click Attempts: " .. tostring(Config.CombatDebug. ClickAttempts) .. "\n"
-    output = output ..  "Health Changes: " .. tostring(Config. CombatDebug.HealthChanges) .. "\n"
+    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
+    output = output .. "Click Attempts: " .. tostring(Config. CombatDebug.ClickAttempts) .. "\n"
+    output = output .. "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
     output = output .. "Weapon Equip Fails: " .. tostring(Config. CombatDebug.WeaponEquipFails) .. "\n"
     output = output ..  "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
     
@@ -112,7 +111,7 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core. getCharacter()
+function Core.getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
@@ -126,24 +125,21 @@ function Core.getPlayerLevel()
     return success and level or 1
 end
 
--- ✅ FIXED: Bỏ trùng Combat, Tool thừa, đổi thành Melee
-function Core. getPlayerWeapons()
-    local weapons = {"Melee"} -- Mặc định dùng Melee thay vì Combat
-    local seen = {["Melee"] = true} -- Tránh trùng
+function Core.getPlayerWeapons()
+    local weapons = {"Melee"}
+    local seen = {["Melee"] = true}
     
     Core.safePcall(function()
         local backpack = player. Backpack
         local character = Core.getCharacter()
         
-        -- Lấy từ Backpack
         for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
+            if item: IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
                 table.insert(weapons, item.Name)
                 seen[item.Name] = true
             end
         end
         
-        -- Lấy từ Character
         for _, item in pairs(character:GetChildren()) do
             if item: IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
                 table.insert(weapons, item.Name)
@@ -155,52 +151,50 @@ function Core. getPlayerWeapons()
     return weapons
 end
 
--- ✅ FIXED:  Equip với Melee
-function Core.equipWeapon(weaponName, Config)
+-- ✅ NEW: Equip bằng hotkey (phím số)
+function Core.pressKey(key)
+    pcall(function()
+        VirtualInputManager: SendKeyEvent(true, key, false, game)
+        task.wait(0.05)
+        VirtualInputManager: SendKeyEvent(false, key, false, game)
+    end)
+end
+
+-- ✅ FIXED:  Equip weapon bằng hotkey thay vì EquipTool
+function Core. equipWeapon(weaponName, Config)
+    -- Map weapon -> hotkey
+    local hotkeyMap = {
+        ["Melee"] = Enum.KeyCode.One,      -- Phím 1
+        ["Sword"] = Enum.KeyCode.Two,       -- Phím 2 (first weapon slot)
+        ["Katana"] = Enum.KeyCode.Two,
+        ["Weapon"] = Enum.KeyCode. Two,
+    }
+    
+    -- Nếu là Melee, bấm phím 1
     if weaponName == "Melee" or weaponName == "Combat" then
-        Core.safePcall(function()
-            local character = Core.getCharacter()
-            for _, item in pairs(character:GetChildren()) do
-                if item: IsA("Tool") then
-                    item.Parent = player.Backpack
-                end
-            end
-        end)
-        Core.logDebug("[Equip] Using Melee (fist)", Config)
+        Core.logDebug("[Equip] Pressing key 1 for Melee", Config)
+        Core.pressKey(Enum.KeyCode.One)
+        task.wait(0.3)
+        Core.logSuccess("[Equip] ✅ Equipped Melee (Hotkey 1)")
         return true
     end
     
-    local success = Core.safePcall(function()
-        local character = Core.getCharacter()
-        local humanoid = character: FindFirstChild("Humanoid")
-        
-        if not humanoid then
-            Core.logError("[Equip] Humanoid not found")
-            Config.CombatDebug.WeaponEquipFails = Config.CombatDebug.WeaponEquipFails + 1
-            return false
-        end
-        
-        local equippedTool = character:FindFirstChildOfClass("Tool")
-        if equippedTool and equippedTool.Name == weaponName then
-            Core.logDebug("[Equip] Weapon already equipped:  " .. weaponName, Config)
-            return true
-        end
-        
-        local weapon = player.Backpack:FindFirstChild(weaponName)
-        
-        if weapon then
-            humanoid: EquipTool(weapon)
-            task.wait(0.3)
-            Core.logSuccess("[Equip] ✅ Equipped weapon: " .. weaponName)
-            return true
-        else
-            Core.logError("[Equip] ❌ Weapon not found in backpack: " .. weaponName)
-            Config.CombatDebug.WeaponEquipFails = Config.CombatDebug.WeaponEquipFails + 1
-            return false
-        end
-    end)
+    -- Với weapon khác, thử bấm phím 2 (weapon slot)
+    Core.logDebug("[Equip] Pressing key 2 for " .. weaponName, Config)
+    Core.pressKey(Enum.KeyCode.Two)
+    task.wait(0.3)
     
-    return success
+    -- Verify equipped
+    local character = Core.getCharacter()
+    local equippedTool = character:FindFirstChildOfClass("Tool")
+    
+    if equippedTool then
+        Core.logSuccess("[Equip] ✅ Equipped:  " .. equippedTool.Name ..  " (Hotkey 2)")
+        return true
+    else
+        Core.logError("[Equip] ⚠️ No weapon equipped after keypress")
+        return false
+    end
 end
 
 function Core.stopTween()
@@ -214,7 +208,7 @@ function Core.tweenTo(targetPos, Config)
     local success = Core.safePcall(function()
         local hrp = Core.getHRP()
         if not hrp then
-            Core. logError("[Tween] HRP not found for tween")
+            Core.logError("[Tween] HRP not found for tween")
             return
         end
         
@@ -230,7 +224,7 @@ function Core.tweenTo(targetPos, Config)
         )
         
         currentTween:Play()
-        currentTween.Completed:Wait()
+        currentTween. Completed:Wait()
     end)
     
     return success
@@ -251,7 +245,7 @@ function Core.smartTeleport(targetPos, forceTween, Config)
             Core.logDebug("[TP] Tween " .. distStr .. " studs", Config)
             Core.tweenTo(targetPos, Config)
         else
-            Core.logDebug("[TP] Instant TP " .. distStr ..  " studs", Config)
+            Core.logDebug("[TP] Instant TP " .. distStr .. " studs", Config)
             hrp.CFrame = CFrame.new(targetPos)
             task.wait(0.3)
         end
@@ -265,36 +259,33 @@ end
 function Core.enableHaki(Config)
     if not Config.Settings.AutoHaki then return end
     Core.safePcall(function()
-        ReplicatedStorage. Remotes.CommF_: InvokeServer("Buso")
+        ReplicatedStorage. Remotes.CommF_:InvokeServer("Buso")
         Core.logDebug("[Haki] Enabled", Config)
     end)
 end
 
--- ✅ FIXED: Fast Attack với runtime debug
-function Core. startFastAttack(Config)
+function Core.startFastAttack(Config)
     if fastAttackConnection then return end
     
-    fastAttackConnection = RunService. Heartbeat:Connect(function()
+    fastAttackConnection = RunService.Heartbeat:Connect(function()
         if Config.Settings.FastAttack and Config.Settings. Enabled then
             Core.safePcall(function()
                 local character = Core.getCharacter()
                 local humanoid = character and character:FindFirstChild("Humanoid")
                 
-                if humanoid and humanoid.Health > 0 then
+                if humanoid and humanoid. Health > 0 then
                     local equippedTool = character:FindFirstChildOfClass("Tool")
-                    local weaponName = equippedTool and equippedTool.Name or "Melee"
+                    local weaponName = equippedTool and equippedTool. Name or "Melee"
                     
-                    -- Runtime debug
                     Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName, Config)
                     
-                    -- Click thực tế
                     local clickSuccess = pcall(function()
                         game:GetService("VirtualUser"):CaptureController()
                         game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
                     end)
                     
                     if not clickSuccess then
-                        Core.logError("[FastAttack] Click failed!")
+                        Core. logError("[FastAttack] Click failed!")
                     end
                     
                     Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
@@ -306,7 +297,7 @@ function Core. startFastAttack(Config)
         end
     end)
     
-    print("✅ Fast Attack started (Debug mode enabled)")
+    print("✅ Fast Attack started (Hotkey mode)")
 end
 
 function Core.stopFastAttack()
@@ -338,10 +329,10 @@ end
 
 function Core.hasActiveQuest()
     local success, result = Core.safePcall(function()
-        local questUI = player.PlayerGui:FindFirstChild("Main")
+        local questUI = player. PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
-            return quest and quest. Visible
+            return quest and quest.Visible
         end
         return false
     end)
@@ -349,11 +340,11 @@ function Core.hasActiveQuest()
     return success and result
 end
 
-function Core. acceptQuest(locationName, questIndex, Config)
+function Core.acceptQuest(locationName, questIndex, Config)
     local success, result = Core.safePcall(function()
         local questPos = Config.QuestLocations[locationName]
         if not questPos then
-            Core.logError("[Quest] Location not found: " .. locationName)
+            Core. logError("[Quest] Location not found: " .. locationName)
             return false
         end
         
@@ -393,7 +384,7 @@ function Core.findNearestMob(mobName, Config)
         local hrp = Core.getHRP()
         if not hrp then return nil end
         
-        local nearestMob, nearestDistance = nil, math. huge
+        local nearestMob, nearestDistance = nil, math.huge
         
         for _, enemy in pairs(workspace. Enemies:GetChildren()) do
             if enemy. Name == mobName then
@@ -411,7 +402,7 @@ function Core.findNearestMob(mobName, Config)
         end
         
         if nearestMob then
-            Core.logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs", Config)
+            Core. logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs", Config)
         end
         
         return nearestMob
@@ -420,10 +411,8 @@ function Core.findNearestMob(mobName, Config)
     return success and mob or nil
 end
 
--- ✅ FIXED: Attack với VirtualUser click + runtime debug
 function Core.performAttack(Config)
     Core.safePcall(function()
-        -- Click thực tế
         local clickSuccess = pcall(function()
             game:GetService("VirtualUser"):CaptureController()
             game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
@@ -433,7 +422,6 @@ function Core.performAttack(Config)
             Core.logError("[Attack] VirtualUser click failed!")
         end
         
-        -- Remote backup
         pcall(function()
             ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
         end)
@@ -443,30 +431,14 @@ function Core.performAttack(Config)
     end)
 end
 
-function Core. farmMob(mobName, count, Config)
+function Core.farmMob(mobName, count, Config)
     local success = Core.safePcall(function()
         print("🎯 Farming " .. mobName .. " x" .. tostring(count))
         
         if Config.Settings.AutoEquipWeapon then
-            print("[Farm] Attempting to equip weapon:  " .. Config.Settings. SelectedWeapon)
-            local equipOK = Core.equipWeapon(Config. Settings.SelectedWeapon, Config)
-            
-            if not equipOK then
-                Core. logError("[Farm] ❌ Failed to equip weapon: " .. tostring(Config.Settings.SelectedWeapon))
-            else
-                -- ✅ FIX: Kiểm tra đúng với Melee
-                if Config.Settings.SelectedWeapon == "Melee" or Config.Settings.SelectedWeapon == "Combat" then
-                    print("[Farm] ✅ Using Melee (fist)")
-                else
-                    local character = Core.getCharacter()
-                    local equippedTool = character:FindFirstChildOfClass("Tool")
-                    if equippedTool then
-                        print("[Farm] ✅ Weapon equipped: " .. equippedTool.Name)
-                    else
-                        Core.logError("[Farm] ⚠️ No tool equipped after equip attempt!")
-                    end
-                end
-            end
+            print("[Farm] Auto equipping weapon:  " .. Config.Settings. SelectedWeapon)
+            Core.equipWeapon(Config.Settings.SelectedWeapon, Config)
+            task.wait(0.2)
         end
         
         local killed = 0
@@ -496,7 +468,7 @@ function Core. farmMob(mobName, count, Config)
                 end
                 
                 if mobHumanoid.Health <= 0 then
-                    Core. logDebug("[Mob] Mob already dead, skipping.. .", Config)
+                    Core.logDebug("[Mob] Mob already dead, skipping.. .", Config)
                     task. wait(0.5)
                     continue
                 end
@@ -525,8 +497,8 @@ function Core. farmMob(mobName, count, Config)
                 local tpOK = Core.smartTeleport(farmPos, false, Config)
                 if not tpOK then
                     Core.logError("[TP] ❌ Teleport failed!")
-                    Config.CombatDebug. PositionErrors = Config.CombatDebug.PositionErrors + 1
-                    task. wait(1)
+                    Config.CombatDebug.PositionErrors = Config.CombatDebug.PositionErrors + 1
+                    task.wait(1)
                     continue
                 end
                 
@@ -565,7 +537,6 @@ function Core. farmMob(mobName, count, Config)
                             
                             Core.logDebug("[Combat] Attack loop #" .. tostring(attackLoopCount), Config)
                             
-                            -- ✅ FIXED: Attack với click thực + runtime debug
                             Core.performAttack(Config)
                             
                             if tick() - lastHealthCheck > 0.5 then
@@ -630,7 +601,7 @@ end
 function Core.autoFarmLoop(Config)
     Core.logSuccess("🚀 AUTO FARM STARTED!")
     Core.logSuccess("⚔️ Weapon: " .. Config.Settings. SelectedWeapon)
-    Core.logSuccess("🔍 Debug: " .. (Config.Settings. DebugMode and "ON" or "OFF"))
+    Core.logSuccess("🔍 Debug: " .. (Config.Settings.DebugMode and "ON" or "OFF"))
     
     while Config.Settings.Enabled do
         task.wait(1)
@@ -646,7 +617,7 @@ function Core.autoFarmLoop(Config)
         Config.Settings.CurrentQuest = quest. Name
         
         print(string.rep("=", 50))
-        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest.LevelReq) .. ")")
+        print("📜 Quest: " .. quest.Name ..  " (Lvl " .. tostring(quest. LevelReq) .. ")")
         print("📍 Location: " .. location)
         print(string.rep("=", 50))
         
@@ -670,7 +641,7 @@ function Core.autoFarmLoop(Config)
         
         if questSuccess then
             Config.Settings.QuestsCompleted = Config.Settings. QuestsCompleted + 1
-            Core.logSuccess("🎉 Quest done!  Total:  " .. tostring(Config.Settings.QuestsCompleted))
+            Core.logSuccess("🎉 Quest done! Total: " .. tostring(Config. Settings.QuestsCompleted))
         else
             warn("Quest failed")
         end
