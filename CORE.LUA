@@ -1,7 +1,8 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - FINAL FIX:  Combat click + Remote             ║
--- ║  ✅ Fixed: Combat melee detection                         ║
--- ║  ✅ Fixed: VirtualUser click for real damage              ║
+-- ║  CORE.LUA - FINAL FIX:  Melee + No Duplicate + Debug      ║
+-- ║  ✅ Fixed:  Đổi Combat → Melee                             ║
+-- ║  ✅ Fixed: Bỏ Tool và Combat trùng                        ║
+-- ║  ✅ Fixed: Fast Attack với runtime debug                  ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -46,7 +47,7 @@ function Core.initConsole(Config)
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
     Core.logSuccess = function(msg) addLog(msg, "SUCCESS") end
-    Core.logDebug = function(msg, Config) if Config.Settings.DebugMode then addLog(msg, "DEBUG") end end
+    Core.logDebug = function(msg, Config) if Config.Settings. DebugMode then addLog(msg, "DEBUG") end end
     
     ScriptContext.Error: Connect(function(message, stackTrace)
         addLog("RUNTIME ERROR: " .. message, "ERROR")
@@ -64,14 +65,14 @@ end
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
+    output = output ..  "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
     
     for _, log in ipairs(Config.ConsoleLog) do
         local prefix = ({ERROR = "[❌]", WARN = "[⚠️]", SUCCESS = "[✅]", INFO = "[ℹ️]", DEBUG = "[🔍]"})[log.type] or "[ℹ️]"
-        output = output ..  string.format("[%s] %s %s\n", log.time, prefix, log.message)
+        output = output .. string.format("[%s] %s %s\n", log.time, prefix, log.message)
     end
     
     return output
@@ -86,7 +87,7 @@ function Core. getErrorsOnly(Config)
             output = output .. string.format("[%s] [%s] %s\n", log.time, log.type, log.message)
         end
     end
-    output = output .. "\nTotal: " .. count ..  "\n"
+    output = output .. "\nTotal:  " .. count .. "\n"
     return output
 end
 
@@ -117,7 +118,7 @@ end
 
 function Core.getHRP()
     local char = Core.getCharacter()
-    return char and char: FindFirstChild("HumanoidRootPart")
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
 function Core.getPlayerLevel()
@@ -125,31 +126,28 @@ function Core.getPlayerLevel()
     return success and level or 1
 end
 
-function Core.getPlayerWeapons()
-    local weapons = {"Combat"}
+-- ✅ FIXED: Bỏ trùng Combat, Tool thừa, đổi thành Melee
+function Core. getPlayerWeapons()
+    local weapons = {"Melee"} -- Mặc định dùng Melee thay vì Combat
+    local seen = {["Melee"] = true} -- Tránh trùng
     
     Core.safePcall(function()
         local backpack = player. Backpack
         local character = Core.getCharacter()
         
+        -- Lấy từ Backpack
         for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
+            if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
                 table.insert(weapons, item.Name)
+                seen[item.Name] = true
             end
         end
         
+        -- Lấy từ Character
         for _, item in pairs(character:GetChildren()) do
-            if item:IsA("Tool") then
-                local alreadyAdded = false
-                for _, w in ipairs(weapons) do
-                    if w == item.Name then
-                        alreadyAdded = true
-                        break
-                    end
-                end
-                if not alreadyAdded then
-                    table.insert(weapons, item.Name)
-                end
+            if item: IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
+                table.insert(weapons, item.Name)
+                seen[item.Name] = true
             end
         end
     end)
@@ -157,23 +155,24 @@ function Core.getPlayerWeapons()
     return weapons
 end
 
+-- ✅ FIXED:  Equip với Melee
 function Core.equipWeapon(weaponName, Config)
-    if weaponName == "Combat" then
+    if weaponName == "Melee" or weaponName == "Combat" then
         Core.safePcall(function()
             local character = Core.getCharacter()
             for _, item in pairs(character:GetChildren()) do
-                if item:IsA("Tool") then
+                if item: IsA("Tool") then
                     item.Parent = player.Backpack
                 end
             end
         end)
-        Core.logDebug("[Equip] Using Combat (melee)", Config)
+        Core.logDebug("[Equip] Using Melee (fist)", Config)
         return true
     end
     
     local success = Core.safePcall(function()
         local character = Core.getCharacter()
-        local humanoid = character:FindFirstChild("Humanoid")
+        local humanoid = character: FindFirstChild("Humanoid")
         
         if not humanoid then
             Core.logError("[Equip] Humanoid not found")
@@ -190,7 +189,7 @@ function Core.equipWeapon(weaponName, Config)
         local weapon = player.Backpack:FindFirstChild(weaponName)
         
         if weapon then
-            humanoid:EquipTool(weapon)
+            humanoid: EquipTool(weapon)
             task.wait(0.3)
             Core.logSuccess("[Equip] ✅ Equipped weapon: " .. weaponName)
             return true
@@ -266,13 +265,13 @@ end
 function Core.enableHaki(Config)
     if not Config.Settings.AutoHaki then return end
     Core.safePcall(function()
-        ReplicatedStorage.Remotes. CommF_:InvokeServer("Buso")
+        ReplicatedStorage. Remotes.CommF_: InvokeServer("Buso")
         Core.logDebug("[Haki] Enabled", Config)
     end)
 end
 
--- ✅ FIXED: Fast Attack với click thực
-function Core.startFastAttack(Config)
+-- ✅ FIXED: Fast Attack với runtime debug
+function Core. startFastAttack(Config)
     if fastAttackConnection then return end
     
     fastAttackConnection = RunService. Heartbeat:Connect(function()
@@ -282,25 +281,37 @@ function Core.startFastAttack(Config)
                 local humanoid = character and character:FindFirstChild("Humanoid")
                 
                 if humanoid and humanoid.Health > 0 then
-                    -- ✅ Click thực tế
-                    pcall(function()
+                    local equippedTool = character:FindFirstChildOfClass("Tool")
+                    local weaponName = equippedTool and equippedTool.Name or "Melee"
+                    
+                    -- Runtime debug
+                    Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName, Config)
+                    
+                    -- Click thực tế
+                    local clickSuccess = pcall(function()
                         game:GetService("VirtualUser"):CaptureController()
                         game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
                     end)
                     
+                    if not clickSuccess then
+                        Core.logError("[FastAttack] Click failed!")
+                    end
+                    
                     Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
                     task.wait(0.15)
+                else
+                    Core.logDebug("[FastAttack] Skip (dead or no humanoid)", Config)
                 end
             end)
         end
     end)
     
-    print("✅ Fast Attack started (Click + Remote mode)")
+    print("✅ Fast Attack started (Debug mode enabled)")
 end
 
 function Core.stopFastAttack()
     if fastAttackConnection then
-        fastAttackConnection: Disconnect()
+        fastAttackConnection:Disconnect()
         fastAttackConnection = nil
         print("Fast Attack stopped")
     end
@@ -327,7 +338,7 @@ end
 
 function Core.hasActiveQuest()
     local success, result = Core.safePcall(function()
-        local questUI = player. PlayerGui:FindFirstChild("Main")
+        local questUI = player.PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
             return quest and quest. Visible
@@ -338,11 +349,11 @@ function Core.hasActiveQuest()
     return success and result
 end
 
-function Core.acceptQuest(locationName, questIndex, Config)
+function Core. acceptQuest(locationName, questIndex, Config)
     local success, result = Core.safePcall(function()
         local questPos = Config.QuestLocations[locationName]
         if not questPos then
-            Core.logError("[Quest] Location not found: " ..  locationName)
+            Core.logError("[Quest] Location not found: " .. locationName)
             return false
         end
         
@@ -382,7 +393,7 @@ function Core.findNearestMob(mobName, Config)
         local hrp = Core.getHRP()
         if not hrp then return nil end
         
-        local nearestMob, nearestDistance = nil, math.huge
+        local nearestMob, nearestDistance = nil, math. huge
         
         for _, enemy in pairs(workspace. Enemies:GetChildren()) do
             if enemy. Name == mobName then
@@ -409,21 +420,26 @@ function Core.findNearestMob(mobName, Config)
     return success and mob or nil
 end
 
--- ✅ FIXED: Attack với VirtualUser click
+-- ✅ FIXED: Attack với VirtualUser click + runtime debug
 function Core.performAttack(Config)
     Core.safePcall(function()
-        -- Method 1: Click thực tế
-        pcall(function()
+        -- Click thực tế
+        local clickSuccess = pcall(function()
             game:GetService("VirtualUser"):CaptureController()
             game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
         end)
         
-        -- Method 2: Remote (backup)
+        if not clickSuccess then
+            Core.logError("[Attack] VirtualUser click failed!")
+        end
+        
+        -- Remote backup
         pcall(function()
             ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
         end)
         
         Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
+        Core.logDebug("[Attack] Click + Remote sent", Config)
     end)
 end
 
@@ -433,14 +449,14 @@ function Core. farmMob(mobName, count, Config)
         
         if Config.Settings.AutoEquipWeapon then
             print("[Farm] Attempting to equip weapon:  " .. Config.Settings. SelectedWeapon)
-            local equipOK = Core.equipWeapon(Config.Settings.SelectedWeapon, Config)
+            local equipOK = Core.equipWeapon(Config. Settings.SelectedWeapon, Config)
             
             if not equipOK then
-                Core.logError("[Farm] ❌ Failed to equip weapon: " .. tostring(Config.Settings.SelectedWeapon))
+                Core. logError("[Farm] ❌ Failed to equip weapon: " .. tostring(Config.Settings.SelectedWeapon))
             else
-                -- ✅ FIX: Kiểm tra đúng với Combat
-                if Config.Settings.SelectedWeapon == "Combat" then
-                    print("[Farm] ✅ Using Combat (melee/fist)")
+                -- ✅ FIX: Kiểm tra đúng với Melee
+                if Config.Settings.SelectedWeapon == "Melee" or Config.Settings.SelectedWeapon == "Combat" then
+                    print("[Farm] ✅ Using Melee (fist)")
                 else
                     local character = Core.getCharacter()
                     local equippedTool = character:FindFirstChildOfClass("Tool")
@@ -464,7 +480,7 @@ function Core. farmMob(mobName, count, Config)
             
             if mob then
                 local mobHRP = mob:FindFirstChild("HumanoidRootPart")
-                local mobHumanoid = mob: FindFirstChild("Humanoid")
+                local mobHumanoid = mob:FindFirstChild("Humanoid")
                 local mobHead = mob:FindFirstChild("Head")
                 
                 if not mobHRP then
@@ -549,7 +565,7 @@ function Core. farmMob(mobName, count, Config)
                             
                             Core.logDebug("[Combat] Attack loop #" .. tostring(attackLoopCount), Config)
                             
-                            -- ✅ FIXED: Attack với click thực
+                            -- ✅ FIXED: Attack với click thực + runtime debug
                             Core.performAttack(Config)
                             
                             if tick() - lastHealthCheck > 0.5 then
@@ -654,7 +670,7 @@ function Core.autoFarmLoop(Config)
         
         if questSuccess then
             Config.Settings.QuestsCompleted = Config.Settings. QuestsCompleted + 1
-            Core.logSuccess("🎉 Quest done! Total:  " .. tostring(Config.Settings.QuestsCompleted))
+            Core.logSuccess("🎉 Quest done!  Total:  " .. tostring(Config.Settings.QuestsCompleted))
         else
             warn("Quest failed")
         end
