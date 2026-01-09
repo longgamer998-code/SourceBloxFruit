@@ -45,7 +45,7 @@ Config.QuestData = {
     },
     ["MagmaQuest"] = {
         {LevelReq = 300, Name = "Mil.  Soldier", Task = {["Military Soldier"] = 7}, Reward = {Beli = 8250, Exp = 1700000}},
-        {LevelReq = 325, Name = "Mil.  Spy", Task = {["Military Spy"] = 8}, Reward = {Beli = 8500, Exp = 2000000}},
+        {LevelReq = 325, Name = "Mil. Spy", Task = {["Military Spy"] = 8}, Reward = {Beli = 8500, Exp = 2000000}},
         {LevelReq = 350, Name = "Magma Admiral", Task = {["Magma Admiral"] = 1}, Reward = {Beli = 15000, Exp = 3000000}}
     },
     ["FishmanQuest"] = {
@@ -55,7 +55,6 @@ Config.QuestData = {
     },
 }
 
--- ========== QUEST LOCATIONS ==========
 Config.QuestLocations = {
     ["BanditQuest1"] = Vector3.new(1059, 17, 1544),
     ["JungleQuest"] = Vector3.new(-1604, 37, 152),
@@ -71,7 +70,6 @@ Config.QuestLocations = {
     ["FishmanQuest"] = Vector3.new(61123, 19, 1569),
 }
 
--- ========== ISLAND LOCATIONS ==========
 Config.IslandLocations = {
     {name = "🏝️ Starter", pos = Vector3.new(1059, 17, 1544)},
     {name = "🌴 Jungle", pos = Vector3.new(-1604, 37, 152)},
@@ -81,7 +79,6 @@ Config.IslandLocations = {
     {name = "⚓ Marine", pos = Vector3.new(-2709, 28, 2124)},
 }
 
--- ========== SETTINGS ==========
 Config.Settings = {
     Enabled = false,
     AutoQuest = true,
@@ -98,7 +95,6 @@ Config.Settings = {
     DebugMode = false,
 }
 
--- ========== COMBAT DEBUG STATS ==========
 Config.CombatDebug = {
     AttackAttempts = 0,
     SuccessfulHits = 0,
@@ -110,7 +106,6 @@ Config.CombatDebug = {
     LastAttackTime = 0,
 }
 
--- ========== CONSOLE LOG ==========
 Config.ConsoleLog = {}
 Config.MAX_LOGS = 300
 
