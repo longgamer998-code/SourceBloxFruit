@@ -1,5 +1,5 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  GUI. LUA - Debug Always On (No toggle)                   ║
+-- ║  GUI.LUA - Auto disable Fast Attack khi bật Auto Farm    ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local GUI = {}
@@ -8,7 +8,7 @@ function GUI.create(Config, Core)
     print("Loading GUI...")
     
     local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-    local Window = Library. CreateLib("🏴‍☠️ Blox Fruits Auto Farm V2.3 PRO", "DarkTheme")
+    local Window = Library. CreateLib("🏴‍☠️ Blox Fruits Auto Farm V2.4 FINAL", "DarkTheme")
     
     local MainTab = Window:NewTab("Main")
     local FarmSection = MainTab:NewSection("⚔️ Auto Farm")
@@ -45,9 +45,8 @@ function GUI.create(Config, Core)
         print("Auto Equip:  " .. (state and "ON" or "OFF"))
     end)
     
-    -- ✅ Đã xóa toggle Debug Mode
-    
-    FarmSection:NewToggle("Auto Farm", "Start/Stop", function(state)
+    -- ✅ FIX: Auto tắt Fast Attack khi bật Auto Farm
+    FarmSection: NewToggle("Auto Farm", "Start/Stop", function(state)
         print("\n[Button] Auto Farm toggled: " .. (state and "ON" or "OFF"))
         
         if state then
@@ -61,6 +60,13 @@ function GUI.create(Config, Core)
                 return
             end
             
+            -- ✅ Tự động tắt Fast Attack để tránh conflict
+            if Config.Settings.FastAttack then
+                Config.Settings.FastAttack = false
+                Core.stopFastAttack()
+                warn("⚠️ Auto-disabled Fast Attack (conflict with Auto Farm)")
+            end
+            
             Config.Settings.Enabled = true
             
             Core.logSuccess("🚀 AUTO FARM ENABLED")
@@ -72,11 +78,6 @@ function GUI.create(Config, Core)
                 warn("❌ Failed to start Auto Farm!")
                 Config.Settings.Enabled = false
                 return
-            end
-            
-            if Config.Settings.FastAttack then
-                print("[Button] Starting Fast Attack...")
-                Core.startFastAttack(Config)
             end
             
             task.wait(0.5)
@@ -113,7 +114,7 @@ function GUI.create(Config, Core)
     FarmSection:NewButton("🔍 Check Thread Status", "Debug info", function()
         print("\n===== THREAD STATUS =====")
         print("Config.Settings.Enabled: " ..  tostring(Config.Settings. Enabled))
-        print("Is Running: " .. tostring(Core. isAutoFarmRunning()))
+        print("Is Running: " .. tostring(Core.isAutoFarmRunning()))
         print("Thread Status: " .. Core.getAutoFarmStatus())
         print("=========================\n")
     end)
@@ -146,11 +147,22 @@ function GUI.create(Config, Core)
     local CombatTab = Window:NewTab("Combat")
     local CombatSection = CombatTab:NewSection("⚔️ Combat")
     
-    CombatSection:NewToggle("Fast Attack", "Fast attack", function(state)
-        Config.Settings. FastAttack = state
+    -- ✅ WARNING: Fast Attack sẽ conflict với Auto Farm
+    CombatSection:NewLabel("⚠️ WARNING: Don't use with Auto Farm!")
+    CombatSection:NewLabel("Fast Attack will auto-disable when")
+    CombatSection:NewLabel("you enable Auto Farm")
+    CombatSection:NewLabel("")
+    
+    CombatSection:NewToggle("Fast Attack", "Fast attack (standalone)", function(state)
+        Config.Settings.FastAttack = state
         print("Fast Attack: " .. (state and "ON" or "OFF"))
         
-        if state and Config.Settings. Enabled then
+        if state then
+            if Config.Settings. Enabled then
+                warn("⚠️ Cannot enable Fast Attack while Auto Farm is running!")
+                Config.Settings.FastAttack = false
+                return
+            end
             Core.startFastAttack(Config)
         else
             Core.stopFastAttack()
@@ -164,7 +176,7 @@ function GUI.create(Config, Core)
     
     CombatSection:NewToggle("Safe Teleport", "Use tween", function(state)
         Config.Settings.SafeTeleport = state
-        print("Safe Teleport: " ..  (state and "ON" or "OFF"))
+        print("Safe Teleport: " .. (state and "ON" or "OFF"))
     end)
     
     CombatSection:NewSlider("Tween Speed", "Speed", 300, 100, function(value)
@@ -176,9 +188,9 @@ function GUI.create(Config, Core)
     local TPSection = TeleportTab:NewSection("🗺️ Teleport")
     
     for _, island in ipairs(Config.IslandLocations) do
-        TPSection: NewButton(island.name, "TP", function()
+        TPSection:NewButton(island.name, "TP", function()
             print("Teleporting to " .. island.name)
-            if Core.smartTeleport(island. pos, true, Config) then
+            if Core.smartTeleport(island.pos, true, Config) then
                 Core.logSuccess("Arrived at " .. island.name)
             else
                 Core.logError("Teleport failed")
@@ -284,21 +296,20 @@ function GUI.create(Config, Core)
     local InfoSection = InfoTab:NewSection("ℹ️ Info")
     
     InfoSection:NewLabel("=======================")
-    InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.3 PRO")
-    InfoSection:NewLabel("🧵 Thread Tracking System")
-    InfoSection:NewLabel("🔍 Debug Always On")
+    InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.4 FINAL")
+    InfoSection:NewLabel("✅ Fixed HP tracking")
+    InfoSection:NewLabel("✅ Multi-method attack")
+    InfoSection:NewLabel("✅ Auto-disable conflict")
     InfoSection:NewLabel("👤 patrick31frag")
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("")
-    InfoSection:NewLabel("✨ Features:")
-    InfoSection:NewLabel("✅ Professional thread control")
-    InfoSection:NewLabel("✅ Multi-method M1 attack")
-    InfoSection:NewLabel("✅ xpcall error tracking")
-    InfoSection:NewLabel("✅ Real-time debug logs")
-    InfoSection:NewLabel("✅ Auto cleanup")
+    InfoSection:NewLabel("✨ How to use:")
+    InfoSection:NewLabel("1. Enable 'Auto Farm' ONLY")
+    InfoSection:NewLabel("2. Don't enable 'Fast Attack'")
+    InfoSection:NewLabel("3. Check Console for stats")
     InfoSection:NewLabel("")
-    InfoSection:NewLabel("Check Console tab")
-    InfoSection:NewLabel("for full debug logs!")
+    InfoSection:NewLabel("Fast Attack = Standalone mode")
+    InfoSection:NewLabel("(for manual farming only)")
     
     print("✅ GUI loaded successfully!")
 end
