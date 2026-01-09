@@ -1,145 +1,40 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  MAIN.LUA - Blox Fruits Auto Farm V2.3                   ║
--- ║  Repo: longgamer998-code/SourceBloxFruit                 ║
--- ╚══════════════════════════════════════════════════════════╝
+-- ║  MAIN. LUA - BLOX FRUITS AUTO FARM V2. 5 FINAL             ║
+-- ╚══════════════════════════════════════════��═══════════════╝
 
-print("╔══════════════════════════════════════════════════════════╗")
-print("║  🏴‍☠️ BLOX FRUITS AUTO FARM V2.3                          ║")
-print("║  Loading modules...                                         ║")
-print("╚══════════════════════════════════════════════════════════╝")
+print("🔄 Loading Blox Fruits Auto Farm...")
 
-local REPO_BASE = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/"
+-- Load modules
+local Config = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CONFIG.LUA"))()
+local Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA"))()
+local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/GUI.LUA"))()
 
-local function safeLoad(filename)
-    print("\n📥 Loading " .. filename ..  "...")
-    
-    local url = REPO_BASE .. filename
-    local content
-    
-    local success, result = pcall(function()
-        content = game:HttpGet(url)
-    end)
-    
-    if not success then
-        warn("❌ HTTP Request failed")
-        warn("Error: " .. tostring(result))
-        warn("URL: " .. url)
-        return nil
-    end
-    
-    if not content or #content == 0 then
-        warn("❌ File is empty or not found")
-        warn("URL: " .. url)
-        warn("Make sure:")
-        warn("  1. File exists on GitHub")
-        warn("  2. File name matches exactly (case-sensitive)")
-        warn("  3. Branch is 'main' not 'master'")
-        return nil
-    end
-    
-    print("✅ Downloaded " .. #content .. " bytes")
-    
-    local loadSuccess, module = pcall(function()
-        return loadstring(content)()
-    end)
-    
-    if not loadSuccess then
-        warn("❌ Failed to execute")
-        warn("Error: " ..  tostring(module))
-        return nil
-    end
-    
-    if not module then
-        warn("❌ Module returned nil")
-        warn("Make sure file ends with 'return Config/Core/GUI'")
-        return nil
-    end
-    
-    print("✅ " .. filename .. " loaded!")
-    return module
-end
-
-print("\n" .. string.rep("=", 60))
-print("📦 Repository: " .. REPO_BASE)
-print(string.rep("=", 60))
-
-local Config = safeLoad("CONFIG.LUA")
-if not Config then
-    warn("\n❌ CONFIG.LUA failed to load - aborting")
-    return
-end
-
-local Core = safeLoad("CORE.LUA")
-if not Core then
-    warn("\n❌ CORE.LUA failed to load - aborting")
-    return
-end
-
-local GUI = safeLoad("GUI.LUA")
-if not GUI then
-    warn("\n❌ GUI.LUA failed to load - aborting")
-    return
-end
-
-print("\n" .. string.rep("=", 60))
-print("✅ All modules loaded successfully!")
-print(string.rep("=", 60))
-
-print("\n🔧 Initializing console...")
-local success, result = pcall(function()
-    Core.initConsole(Config)
-end)
-
-if not success then
-    warn("❌ Console init failed:  " .. tostring(result))
-    return
-end
-
+-- Init
+Core.initConsole(Config)
 print("✅ Console ready")
 
-local player = game: GetService("Players").LocalPlayer
+-- Player info
+print("\n============================================================")
+print("👤 Player:  " .. game.Players.LocalPlayer.Name)
+print("⭐ Level: " .. tostring(game.Players.LocalPlayer.Data.Level. Value))
+print("💰 Beli: " .. tostring(game. Players.LocalPlayer.Data. Beli.Value))
+print("============================================================\n")
 
-print("\n" .. string.rep("=", 60))
-print("👤 Player: " .. player.Name)
-print("⭐ Level: " .. tostring(Core.getPlayerLevel()))
-
-local belliSuccess, belli = pcall(function() return player.Data.Beli. Value end)
-if belliSuccess then
-    print("💰 Beli: " .. tostring(belli))
-end
-
-print(string.rep("=", 60))
-
-print("\n🎨 Creating GUI...")
-success, result = pcall(function()
-    GUI.create(Config, Core)
-end)
-
-if not success then
-    warn("❌ GUI creation failed: " .. tostring(result))
-    return
-end
+-- Create GUI
+print("🎨 Creating GUI...")
+GUI.create(Config, Core)
 
 print("\n🔫 Detecting weapons...")
-task.spawn(function()
-    task.wait(2)
-    local weapons = Core.getPlayerWeapons()
-    if weapons and #weapons > 0 then
-        print("Weapons found:")
-        for i, weapon in ipairs(weapons) do
-            print("  " .. tostring(i) .. ". " .. weapon)
-        end
-    end
-end)
 
-print("\n" .. string.rep("=", 60))
+print("\n============================================================")
 print("✅ SCRIPT LOADED SUCCESSFULLY!")
-print(string.rep("=", 60))
+print("============================================================")
 print("📖 How to use:")
-print("  1. Enable 'Debug Mode' for detailed logs")
+print("  1. Select weapon")
 print("  2. Toggle 'Auto Farm' to start")
 print("  3. Check Console tab for stats")
-print(string.rep("=", 60))
-print("\n🌐 " ..  REPO_BASE)
+print("============================================================\n")
+
+print("🌐 https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/")
 print("📅 " .. os.date("%Y-%m-%d %H:%M:%S"))
 print("✨ Ready!")
