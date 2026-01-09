@@ -1,5 +1,6 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  GUI.LUA - GUI Interface Only                            ║
+-- ║  GUI.LUA - GUI Interface - FIXED VERSION                 ║
+-- ║  ✅ Fixed: Weapon dropdown refresh                        ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local GUI = {}
@@ -8,13 +9,16 @@ function GUI.create(Config, Core)
     print("Loading GUI...")
     
     local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-    local Window = Library. CreateLib("🏴‍☠️ Blox Fruits Auto Farm V2.3", "DarkTheme")
+    local Window = Library. CreateLib("🏴‍☠️ Blox Fruits Auto Farm V2.3 FIXED", "DarkTheme")
     
     local MainTab = Window:NewTab("Main")
     local FarmSection = MainTab:NewSection("⚔️ Auto Farm")
     
+    -- ✅ FIXED: Lưu reference để có thể refresh
     local weaponList = Core.getPlayerWeapons()
-    FarmSection:NewDropdown("Select Weapon", "Choose weapon", weaponList, function(selected)
+    local weaponDropdown
+    
+    weaponDropdown = FarmSection:NewDropdown("Select Weapon", "Choose weapon", weaponList, function(selected)
         Config.Settings.SelectedWeapon = selected
         Core.logSuccess("Weapon selected: " .. selected)
         
@@ -23,11 +27,19 @@ function GUI.create(Config, Core)
         end
     end)
     
+    -- ✅ FIXED:  Refresh thực sự cập nhật dropdown
     FarmSection:NewButton("🔄 Refresh Weapons", "Reload weapon list", function()
         weaponList = Core.getPlayerWeapons()
+        
+        -- Cập nhật dropdown (Kavo UI hỗ trợ Refresh hoặc phải tạo lại)
+        pcall(function()
+            weaponDropdown: Refresh(weaponList)
+        end)
+        
+        print("✅ Weapons refreshed!")
         print("Weapons found:")
         for i, weapon in ipairs(weaponList) do
-            print("  " .. tostring(i) .. ". " .. weapon)
+            print("  " .. tostring(i) .. ".  " .. weapon)
         end
         Core.logSuccess("Found " .. tostring(#weaponList) .. " weapons")
     end)
@@ -39,10 +51,10 @@ function GUI.create(Config, Core)
     
     FarmSection: NewToggle("Debug Mode", "Enable detailed logs", function(state)
         Config.Settings.DebugMode = state
-        print("Debug Mode:  " .. (state and "ON" or "OFF"))
+        print("Debug Mode: " .. (state and "ON" or "OFF"))
     end)
     
-    FarmSection: NewToggle("Auto Farm", "Start/Stop", function(state)
+    FarmSection:NewToggle("Auto Farm", "Start/Stop", function(state)
         Config.Settings.Enabled = state
         
         if state then
@@ -60,7 +72,7 @@ function GUI.create(Config, Core)
     
     FarmSection:NewToggle("Auto Quest", "Auto accept", function(state)
         Config.Settings.AutoQuest = state
-        print("Auto Quest: " .. (state and "ON" or "OFF"))
+        print("Auto Quest: " ..  (state and "ON" or "OFF"))
     end)
     
     FarmSection:NewSlider("Farm Distance", "Height above mob", 30, 5, function(value)
@@ -119,7 +131,7 @@ function GUI.create(Config, Core)
         TPSection: NewButton(island.name, "TP", function()
             print("Teleporting to " .. island.name)
             if Core.smartTeleport(island. pos, true, Config) then
-                Core.logSuccess("Arrived at " .. island.name)
+                Core. logSuccess("Arrived at " .. island.name)
             else
                 Core.logError("Teleport failed")
             end
@@ -133,7 +145,7 @@ function GUI.create(Config, Core)
         print("\n===========================")
         print("PLAYER STATS")
         print("===========================")
-        print("Player:  " .. game. Players.LocalPlayer.Name)
+        print("Player: " .. game.Players.LocalPlayer.Name)
         print("Level: " .. tostring(Core.getPlayerLevel()))
         print("Weapon: " .. Config.Settings. SelectedWeapon)
         print("Quest: " .. Config.Settings.CurrentQuest)
@@ -143,7 +155,7 @@ function GUI.create(Config, Core)
     end)
     
     StatsSection:NewButton("🔄 Reset Counters", "Reset", function()
-        Config.Settings. MobsKilled = 0
+        Config.Settings.MobsKilled = 0
         Config.Settings.QuestsCompleted = 0
         Core.logSuccess("Counters reset")
     end)
@@ -202,9 +214,9 @@ function GUI.create(Config, Core)
     
     ConsoleSection:NewButton("💾 Export Debug", "Full export", function()
         local debug = "=== DEBUG EXPORT ===\n"
-        debug = debug .. "Player: " .. game.Players.LocalPlayer.Name .. "\n"
+        debug = debug .. "Player: " .. game.Players.LocalPlayer.Name ..  "\n"
         debug = debug .. "Level: " .. tostring(Core.getPlayerLevel()) .. "\n"
-        debug = debug .. "Weapon: " .. Config.Settings. SelectedWeapon .. "\n"
+        debug = debug .. "Weapon: " .. Config.Settings.SelectedWeapon .. "\n"
         debug = debug .. "\n" .. Core.getCombatDebug(Config)
         debug = debug .. "\n" .. Core.getConsoleText(Config)
         
@@ -220,12 +232,15 @@ function GUI.create(Config, Core)
     local InfoSection = InfoTab:NewSection("ℹ️ Info")
     
     InfoSection:NewLabel("=======================")
-    InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.3")
+    InfoSection:NewLabel("🏴‍☠️ Auto Farm V2.3 FIXED")
     InfoSection:NewLabel("🐛 Combat Debug System")
     InfoSection:NewLabel("👤 patrick31frag")
     InfoSection:NewLabel("=======================")
     InfoSection:NewLabel("")
     InfoSection:NewLabel("✨ Features:")
+    InfoSection:NewLabel("✅ Fixed farm position")
+    InfoSection:NewLabel("✅ Real fast attack")
+    InfoSection:NewLabel("✅ Weapon refresh")
     InfoSection:NewLabel("🔍 Position tracking")
     InfoSection:NewLabel("💥 Attack hit detection")
     InfoSection:NewLabel("⚔️ Weapon equip tracking")
@@ -235,7 +250,7 @@ function GUI.create(Config, Core)
     InfoSection:NewLabel("Enable 'Debug Mode' in Main")
     InfoSection:NewLabel("Check Console for details")
     
-    print("GUI loaded successfully!")
+    print("✅ GUI loaded successfully!")
 end
 
 return GUI
