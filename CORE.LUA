@@ -1,6 +1,8 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  CORE.LUA - PROFESSIONAL THREAD TRACKING                  ║
--- ║  ✅ Cách 1: Thread tracking full hoàn chỉnh               ║
+-- ║  CORE.LUA - IDOL DEV STYLE (Debug Always On)             ║
+-- ║  ✅ xpcall với traceback đúng                             ║
+-- ║  ✅ Multi-method M1 (mouse1click → VIM → VU → Tool)       ║
+-- ║  ✅ Runtime debug đầy đủ (luôn bật)                       ║
 -- ╚══════════════════════════════════════════════════════════╝
 
 local Core = {}
@@ -16,9 +18,17 @@ local ScriptContext = game:GetService("ScriptContext")
 local player = Players.LocalPlayer
 local currentTween = nil
 local fastAttackConnection = nil
-local autoFarmThread = nil  -- ✅ Thread reference
+local autoFarmThread = nil
 local oldPrint = print
 local oldWarn = warn
+
+local m1Stats = {
+    mouse1click = 0,
+    vim = 0,
+    virtualuser = 0,
+    tool = 0,
+    failed = 0
+}
 
 function Core.initConsole(Config)
     local function addLog(message, logType)
@@ -43,11 +53,13 @@ function Core.initConsole(Config)
     end
     
     print = function(... ) addLog(table.concat({...}, " "), "INFO") end
-    warn = function(...) addLog(table.concat({...}, " "), "WARN") end
+    warn = function(... ) addLog(table.concat({...}, " "), "WARN") end
     
     Core.logError = function(msg) addLog(msg, "ERROR") end
     Core.logSuccess = function(msg) addLog(msg, "SUCCESS") end
-    Core.logDebug = function(msg, Config) if Config.Settings.DebugMode then addLog(msg, "DEBUG") end end
+    
+    -- ✅ Debug luôn bật (bỏ check Config.Settings.DebugMode)
+    Core.logDebug = function(msg) addLog(msg, "DEBUG") end
     
     ScriptContext.Error: Connect(function(message, stackTrace)
         addLog("RUNTIME ERROR: " .. message, "ERROR")
@@ -56,16 +68,23 @@ function Core.initConsole(Config)
     
     Core.safePcall = function(func, ...)
         local args = {...}
-        local success, result = pcall(func, unpack(args))
-        if not success then addLog("PCALL ERROR: " .. tostring(result), "ERROR") end
-        return success, result
+        local ok, result = xpcall(function()
+            return func(unpack(args))
+        end, function(err)
+            return tostring(err) .. "\n" .. debug.traceback("", 2)
+        end)
+        
+        if not ok then
+            addLog("XPCALL ERROR:\n" .. tostring(result), "ERROR")
+        end
+        return ok, result
     end
 end
 
 function Core.getConsoleText(Config)
     local output = "===== BLOX FRUITS AUTO FARM CONSOLE =====\n"
     output = output .. "Player: " .. player.Name .. "\n"
-    output = output ..  "Level: " .. tostring(player.Data.Level. Value or "? ") .. "\n"
+    output = output ..  "Level: " .. tostring(player. Data.Level. Value or "? ") .. "\n"
     output = output .. "Total Logs: " .. #Config.ConsoleLog .. "\n"
     output = output .. "Timestamp: " .. os.date("%Y-%m-%d %H:%M:%S") .. "\n"
     output = output .. string.rep("=", 45) .. "\n\n"
@@ -94,15 +113,21 @@ end
 function Core.getCombatDebug(Config)
     local output = "===== COMBAT DEBUG STATS =====\n"
     output = output .. "Attack Attempts: " .. tostring(Config.CombatDebug.AttackAttempts) .. "\n"
-    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug. SuccessfulHits) .. "\n"
-    output = output .. "Click Attempts: " .. tostring(Config.CombatDebug. ClickAttempts) .. "\n"
-    output = output ..  "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
-    output = output .. "Weapon Equip Fails: " .. tostring(Config.CombatDebug.WeaponEquipFails) .. "\n"
-    output = output .. "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
+    output = output .. "Successful Hits: " .. tostring(Config.CombatDebug.SuccessfulHits) .. "\n"
+    output = output .. "Click Attempts: " .. tostring(Config. CombatDebug.ClickAttempts) .. "\n"
+    output = output .. "Health Changes: " .. tostring(Config.CombatDebug. HealthChanges) .. "\n"
+    output = output .. "Weapon Equip Fails: " .. tostring(Config. CombatDebug.WeaponEquipFails) .. "\n"
+    output = output ..  "Position Errors: " .. tostring(Config.CombatDebug. PositionErrors) .. "\n"
     
     local hitRate = Config.CombatDebug.AttackAttempts > 0 and 
         (Config.CombatDebug.SuccessfulHits / Config.CombatDebug. AttackAttempts * 100) or 0
     output = output .. "Hit Rate: " .. tostring(math.floor(hitRate)) .. "%\n"
+    output = output .. "\n=== M1 METHOD STATS ===\n"
+    output = output .. "mouse1click: " .. m1Stats.mouse1click .. "\n"
+    output = output ..  "VirtualInputManager: " .. m1Stats. vim .. "\n"
+    output = output .. "VirtualUser: " .. m1Stats.virtualuser ..  "\n"
+    output = output .. "Tool:Activate: " .. m1Stats. tool .. "\n"
+    output = output .. "Failed: " .. m1Stats.failed .. "\n"
     output = output .. "==============================\n"
     return output
 end
@@ -112,17 +137,19 @@ function Core.clearConsole(Config)
     print("Console cleared")
 end
 
-function Core. getCharacter()
+function Core.getCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
 
 function Core.getHRP()
     local char = Core.getCharacter()
-    return char and char: FindFirstChild("HumanoidRootPart")
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
 function Core.getPlayerLevel()
-    local success, level = pcall(function() return player.Data.Level.Value end)
+    local success, level = Core.safePcall(function() 
+        return player.Data.Level.Value 
+    end)
     return success and level or 1
 end
 
@@ -136,13 +163,13 @@ function Core.getPlayerWeapons()
         
         for _, item in pairs(backpack:GetChildren()) do
             if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
-                table.insert(weapons, item. Name)
-                seen[item. Name] = true
+                table.insert(weapons, item.Name)
+                seen[item.Name] = true
             end
         end
         
         for _, item in pairs(character:GetChildren()) do
-            if item: IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
+            if item:IsA("Tool") and item.Name ~= "Tool" and not seen[item.Name] then
                 table.insert(weapons, item.Name)
                 seen[item.Name] = true
             end
@@ -153,7 +180,7 @@ function Core.getPlayerWeapons()
 end
 
 function Core.pressKey(key)
-    pcall(function()
+    Core.safePcall(function()
         VirtualInputManager:SendKeyEvent(true, key, false, game)
         task.wait(0.05)
         VirtualInputManager: SendKeyEvent(false, key, false, game)
@@ -162,14 +189,14 @@ end
 
 function Core.equipWeapon(weaponName, Config)
     if weaponName == "Melee" or weaponName == "Combat" then
-        Core.logDebug("[Equip] Pressing key 1 for Melee", Config)
+        Core.logDebug("[Equip] Pressing key 1 for Melee")
         Core.pressKey(Enum.KeyCode.One)
         task.wait(0.3)
         Core.logSuccess("[Equip] ✅ Equipped Melee (Hotkey 1)")
         return true
     end
     
-    Core.logDebug("[Equip] Pressing key 2 for " .. weaponName, Config)
+    Core.logDebug("[Equip] Pressing key 2 for " .. weaponName)
     Core.pressKey(Enum.KeyCode.Two)
     task.wait(0.3)
     
@@ -207,7 +234,7 @@ function Core.tweenTo(targetPos, Config)
         
         currentTween = TweenService: Create(
             hrp,
-            TweenInfo.new(duration, Enum.EasingStyle. Linear),
+            TweenInfo.new(duration, Enum.EasingStyle.Linear),
             {CFrame = CFrame.new(targetPos)}
         )
         
@@ -220,7 +247,7 @@ end
 
 function Core.smartTeleport(targetPos, forceTween, Config)
     local success = Core.safePcall(function()
-        local hrp = Core. getHRP()
+        local hrp = Core.getHRP()
         if not hrp then
             Core.logError("[TP] HRP not found")
             return false
@@ -230,11 +257,11 @@ function Core.smartTeleport(targetPos, forceTween, Config)
         local distStr = tostring(math.floor(distance))
         
         if forceTween or (Config.Settings.SafeTeleport and distance > 100) then
-            Core.logDebug("[TP] Tween " .. distStr .. " studs", Config)
+            Core.logDebug("[TP] Tween " .. distStr .. " studs")
             Core.tweenTo(targetPos, Config)
         else
-            Core.logDebug("[TP] Instant TP " .. distStr ..  " studs", Config)
-            hrp.CFrame = CFrame.new(targetPos)
+            Core.logDebug("[TP] Instant TP " .. distStr ..  " studs")
+            hrp.CFrame = CFrame. new(targetPos)
             task.wait(0.3)
         end
         
@@ -248,77 +275,157 @@ function Core.enableHaki(Config)
     if not Config.Settings.AutoHaki then return end
     Core.safePcall(function()
         ReplicatedStorage. Remotes.CommF_:InvokeServer("Buso")
-        Core.logDebug("[Haki] Enabled", Config)
+        Core.logDebug("[Haki] Enabled")
     end)
 end
 
-function Core.startFastAttack(Config)
-    if fastAttackConnection then return end
+-- ╔══════════════════════════════════════════════════════════╗
+-- ║  M1 CLICK - IDOL DEV STYLE                                ║
+-- ╚══════════════════════════════════════════════════════════╝
+
+function Core. doM1()
+    if type(mouse1click) == "function" then
+        local ok = Core.safePcall(function()
+            mouse1click()
+        end)
+        if ok then
+            m1Stats.mouse1click = m1Stats.mouse1click + 1
+            return true, "mouse1click"
+        end
+    end
     
-    fastAttackConnection = RunService.Heartbeat:Connect(function()
-        if Config.Settings.FastAttack and Config.Settings. Enabled then
+    if type(mouse1press) == "function" and type(mouse1release) == "function" then
+        local ok = Core.safePcall(function()
+            mouse1press()
+            task.wait(0.02)
+            mouse1release()
+        end)
+        if ok then
+            m1Stats.mouse1click = m1Stats.mouse1click + 1
+            return true, "mouse1press/release"
+        end
+    end
+    
+    local okVIM = Core.safePcall(function()
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.02)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+    end)
+    if okVIM then
+        m1Stats.vim = m1Stats. vim + 1
+        return true, "VirtualInputManager"
+    end
+    
+    local okVU = Core.safePcall(function()
+        VirtualUser: CaptureController()
+        VirtualUser:Button1Down(Vector2.new(0, 0), workspace. CurrentCamera.CFrame)
+        task.wait(0.02)
+        VirtualUser:Button1Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end)
+    if okVU then
+        m1Stats.virtualuser = m1Stats. virtualuser + 1
+        return true, "VirtualUser"
+    end
+    
+    local okTool = Core.safePcall(function()
+        local char = player.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        if tool and tool. Activate then 
+            tool: Activate() 
+            return true
+        end
+        return false
+    end)
+    if okTool then
+        m1Stats.tool = m1Stats.tool + 1
+        return true, "Tool: Activate"
+    end
+    
+    m1Stats.failed = m1Stats.failed + 1
+    return false, "all_methods_failed"
+end
+
+function Core. performAttack(Config)
+    Core.safePcall(function()
+        local clicked, method = Core.doM1()
+        
+        local remoteOk = Core.safePcall(function()
+            ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
+        end)
+        
+        Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
+        Core.logDebug("[Attack] M1=" .. tostring(clicked) .. " (" .. method .. ") Remote=" .. tostring(remoteOk))
+    end)
+end
+
+do
+    local lastFastAttack = 0
+    local FAST_ATTACK_INTERVAL = 0.15
+    
+    function Core.startFastAttack(Config)
+        if fastAttackConnection then return end
+        
+        fastAttackConnection = RunService.Heartbeat:Connect(function()
+            if not (Config.Settings.FastAttack and Config.Settings. Enabled) then
+                return
+            end
+            
+            local now = tick()
+            if now - lastFastAttack < FAST_ATTACK_INTERVAL then
+                return
+            end
+            lastFastAttack = now
+            
             Core.safePcall(function()
                 local character = Core.getCharacter()
                 local humanoid = character and character:FindFirstChild("Humanoid")
                 
-                if humanoid and humanoid. Health > 0 then
-                    local equippedTool = character:FindFirstChildOfClass("Tool")
-                    local weaponName = equippedTool and equippedTool.Name or "Melee"
-                    
-                    Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName, Config)
-                    
-                    local clickSuccess = pcall(function()
-                        game:GetService("VirtualUser"):CaptureController()
-                        game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
-                    end)
-                    
-                    if not clickSuccess then
-                        Core. logError("[FastAttack] Click failed!")
-                    end
-                    
-                    Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
-                    task.wait(0.15)
-                else
-                    Core.logDebug("[FastAttack] Skip (dead or no humanoid)", Config)
+                if not (humanoid and humanoid. Health > 0) then
+                    Core.logDebug("[FastAttack] Skip (dead/no humanoid)")
+                    return
+                end
+                
+                local equippedTool = character:FindFirstChildOfClass("Tool")
+                local weaponName = equippedTool and equippedTool.Name or "Melee"
+                
+                Core.logDebug("[FastAttack] Tick - Weapon: " .. weaponName)
+                
+                local clicked, method = Core.doM1()
+                
+                Core.safePcall(function()
+                    ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
+                end)
+                
+                if not clicked then
+                    Core.logError("[FastAttack] M1 failed (" .. method .. ")")
                 end
             end)
-        end
-    end)
-    
-    print("✅ Fast Attack started (Hotkey mode)")
+        end)
+        
+        print("✅ Fast Attack started (Multi-method mode)")
+    end
 end
 
 function Core.stopFastAttack()
     if fastAttackConnection then
-        fastAttackConnection:Disconnect()
+        fastAttackConnection: Disconnect()
         fastAttackConnection = nil
         print("⛔ Fast Attack stopped")
     end
 end
 
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  THREAD TRACKING SYSTEM - PROFESSIONAL                    ║
+-- ║  THREAD TRACKING SYSTEM                                    ║
 -- ╚══════════════════════════════════════════════════════════╝
 
--- ✅ Kiểm tra thread có đang chạy không
 function Core.isAutoFarmRunning()
-    if not autoFarmThread then
-        return false
-    end
+    if not autoFarmThread then return false end
     
-    -- Check coroutine status
-    local success, status = pcall(function()
+    local ok, status = Core.safePcall(function()
         return coroutine.status(autoFarmThread)
     end)
     
-    if not success then
-        -- Thread không hợp lệ
-        autoFarmThread = nil
-        return false
-    end
-    
-    -- Nếu dead hoặc suspended → không còn chạy
-    if status == "dead" then
+    if not ok or status == "dead" then
         autoFarmThread = nil
         return false
     end
@@ -326,25 +433,21 @@ function Core.isAutoFarmRunning()
     return true
 end
 
--- ✅ Lấy trạng thái thread
-function Core.getAutoFarmStatus()
-    if not autoFarmThread then
-        return "stopped"
-    end
+function Core. getAutoFarmStatus()
+    if not autoFarmThread then return "stopped" end
     
-    local success, status = pcall(function()
+    local ok, status = Core.safePcall(function()
         return coroutine.status(autoFarmThread)
     end)
     
-    if not success then
+    if not ok then
         autoFarmThread = nil
         return "error"
     end
     
-    return status -- "running", "suspended", "dead", "normal"
+    return status
 end
 
--- ✅ Stop auto farm - Kill thread an toàn
 function Core.stopAutoFarm()
     if not autoFarmThread then
         print("[Thread] No thread to stop")
@@ -353,18 +456,10 @@ function Core.stopAutoFarm()
     
     print("[Thread] Stopping auto farm thread...")
     
-    -- Cancel thread
-    local success = pcall(function()
+    Core.safePcall(function()
         task.cancel(autoFarmThread)
     end)
     
-    if success then
-        print("[Thread] ✅ Thread cancelled successfully")
-    else
-        warn("[Thread] ⚠️ Failed to cancel thread, forcing cleanup")
-    end
-    
-    -- Cleanup
     autoFarmThread = nil
     Core.stopTween()
     Core.stopFastAttack()
@@ -372,29 +467,24 @@ function Core.stopAutoFarm()
     print("⛔ Auto Farm stopped completely")
 end
 
--- ✅ Start auto farm - Với full validation
 function Core.startAutoFarm(Config)
-    -- Check nếu đã có thread chạy
     if Core.isAutoFarmRunning() then
         warn("[Thread] ⚠️ Auto Farm already running!")
         warn("[Thread] Status: " .. Core.getAutoFarmStatus())
         return false
     end
     
-    -- Cleanup thread cũ nếu có
     if autoFarmThread then
         print("[Thread] Cleaning up old thread...")
         Core.stopAutoFarm()
         task.wait(0.5)
     end
     
-    -- Spawn thread mới
     print("[Thread] Starting new auto farm thread...")
     autoFarmThread = task.spawn(function()
         Core.autoFarmLoop(Config)
     end)
     
-    -- Verify thread đã start
     task.wait(0.2)
     if Core.isAutoFarmRunning() then
         print("[Thread] ✅ Thread started successfully")
@@ -407,7 +497,7 @@ function Core.startAutoFarm(Config)
     end
 end
 
--- ╔══════════════════════════════════════════════════════════╗
+-- ╔════════════���═════════════════════════════════════════════╗
 -- ║  AUTO FARM FUNCTIONS                                       ║
 -- ╚══════════════════════════════════════════════════════════╝
 
@@ -431,8 +521,8 @@ function Core.findBestQuest(Config)
 end
 
 function Core.hasActiveQuest()
-    local success, result = Core.safePcall(function()
-        local questUI = player.PlayerGui:FindFirstChild("Main")
+    local ok, result = Core.safePcall(function()
+        local questUI = player. PlayerGui:FindFirstChild("Main")
         if questUI then
             local quest = questUI:FindFirstChild("Quest")
             return quest and quest. Visible
@@ -440,11 +530,11 @@ function Core.hasActiveQuest()
         return false
     end)
     
-    return success and result
+    return ok and result
 end
 
 function Core.acceptQuest(locationName, questIndex, Config)
-    local success, result = Core.safePcall(function()
+    local ok, result = Core.safePcall(function()
         local questPos = Config.QuestLocations[locationName]
         if not questPos then
             Core.logError("[Quest] Location not found: " .. locationName)
@@ -459,12 +549,12 @@ function Core.acceptQuest(locationName, questIndex, Config)
         
         task.wait(0.5)
         
-        local invokeSuccess, invokeResult = pcall(function()
+        local invokeOk, invokeResult = Core.safePcall(function()
             return ReplicatedStorage.Remotes. CommF_:InvokeServer("StartQuest", locationName, questIndex)
         end)
         
-        if not invokeSuccess then
-            Core.logError("[Quest] StartQuest invoke failed:  " .. tostring(invokeResult))
+        if not invokeOk then
+            Core. logError("[Quest] StartQuest invoke failed:  " .. tostring(invokeResult))
             return false
         end
         
@@ -479,11 +569,11 @@ function Core.acceptQuest(locationName, questIndex, Config)
         end
     end)
     
-    return success and result
+    return ok and result
 end
 
 function Core.findNearestMob(mobName, Config)
-    local success, mob = Core.safePcall(function()
+    local ok, mob = Core.safePcall(function()
         local hrp = Core.getHRP()
         if not hrp then return nil end
         
@@ -505,42 +595,22 @@ function Core.findNearestMob(mobName, Config)
         end
         
         if nearestMob then
-            Core.logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs", Config)
+            Core.logDebug("[Mob] Found " .. mobName .. " at " .. tostring(math.floor(nearestDistance)) .. " studs")
         end
         
         return nearestMob
     end)
     
-    return success and mob or nil
-end
-
-function Core.performAttack(Config)
-    Core.safePcall(function()
-        local clickSuccess = pcall(function()
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):Button1Down(Vector2.new(0, 0))
-        end)
-        
-        if not clickSuccess then
-            Core.logError("[Attack] VirtualUser click failed!")
-        end
-        
-        pcall(function()
-            ReplicatedStorage.Remotes. CommF_:InvokeServer("Combat")
-        end)
-        
-        Config.CombatDebug. ClickAttempts = Config.CombatDebug.ClickAttempts + 1
-        Core.logDebug("[Attack] Click + Remote sent", Config)
-    end)
+    return ok and mob or nil
 end
 
 function Core.farmMob(mobName, count, Config)
-    local success = Core.safePcall(function()
+    local ok = Core.safePcall(function()
         print("🎯 Farming " .. mobName .. " x" .. tostring(count))
         
         if Config.Settings.AutoEquipWeapon then
             print("[Farm] Auto equipping weapon:  " .. Config.Settings. SelectedWeapon)
-            Core.equipWeapon(Config.Settings.SelectedWeapon, Config)
+            Core.equipWeapon(Config. Settings.SelectedWeapon, Config)
             task.wait(0.2)
         end
         
@@ -571,8 +641,8 @@ function Core.farmMob(mobName, count, Config)
                 end
                 
                 if mobHumanoid.Health <= 0 then
-                    Core.logDebug("[Mob] Mob already dead, skipping.. .", Config)
-                    task. wait(0.5)
+                    Core.logDebug("[Mob] Mob already dead, skipping...")
+                    task.wait(0.5)
                     continue
                 end
                 
@@ -592,10 +662,10 @@ function Core.farmMob(mobName, count, Config)
                 local direction = (hrp.Position - targetPos).Unit
                 local behindMob = targetPos + direction * math.min(Config.Settings.FarmDistance, 6)
                 local side = Vector3.new(-direction.Z, 0, direction.X).Unit * 2
-                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob. Z) + side
+                local farmPos = Vector3.new(behindMob.X, targetPos.Y + 2, behindMob.Z) + side
                 
-                Core.logDebug("[TP] Target mob pos: " .. tostring(targetPos), Config)
-                Core.logDebug("[TP] Farm pos calculated: " .. tostring(farmPos), Config)
+                Core.logDebug("[TP] Target mob pos: " .. tostring(targetPos))
+                Core.logDebug("[TP] Farm pos calculated: " .. tostring(farmPos))
                 
                 local tpOK = Core.smartTeleport(farmPos, false, Config)
                 if not tpOK then
@@ -638,7 +708,7 @@ function Core.farmMob(mobName, count, Config)
                             local lookAt = CFrame.new(hrp.Position, mobHRP.Position)
                             hrp.CFrame = lookAt
                             
-                            Core.logDebug("[Combat] Attack loop #" .. tostring(attackLoopCount), Config)
+                            Core.logDebug("[Combat] Attack loop #" .. tostring(attackLoopCount))
                             
                             Core.performAttack(Config)
                             
@@ -683,7 +753,7 @@ function Core.farmMob(mobName, count, Config)
                 task.wait(0.5)
             else
                 if attempts % 10 == 0 then
-                    Core.logDebug("[Farm] ⏳ Waiting for " .. mobName .. " to spawn (" .. tostring(attempts) .. "/" .. tostring(maxAttempts) .. ")", Config)
+                    Core.logDebug("[Farm] ⏳ Waiting for " .. mobName .. " to spawn (" .. tostring(attempts) .. "/" .. tostring(maxAttempts) .. ")")
                 end
                 task.wait(2)
             end
@@ -698,13 +768,12 @@ function Core.farmMob(mobName, count, Config)
         end
     end)
     
-    return success
+    return ok
 end
 
 function Core.autoFarmLoop(Config)
     Core.logSuccess("🚀 AUTO FARM STARTED!")
     Core.logSuccess("⚔️ Weapon: " .. Config.Settings. SelectedWeapon)
-    Core.logSuccess("🔍 Debug: " .. (Config.Settings. DebugMode and "ON" or "OFF"))
     print("[Thread] Loop started, thread ID: " .. tostring(autoFarmThread))
     
     while Config.Settings.Enabled do
@@ -757,7 +826,6 @@ function Core.autoFarmLoop(Config)
     Config.Settings.CurrentQuest = "None"
     print("[Thread] Loop finished naturally")
     
-    -- ✅ Cleanup khi loop kết thúc
     autoFarmThread = nil
     Core.stopTween()
     Core.stopFastAttack()
