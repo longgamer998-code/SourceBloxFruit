@@ -1,72 +1,150 @@
 -- =================================================================
--- MAIN.LUA - SAFE LOADER (check từng bước, không crash)
+-- MAIN.LUA - Universal Loader (hỗ trợ mọi executor)
 -- =================================================================
 
 print("=" .. string.rep("=", 58) .. "=")
-print("  BLOX FRUITS AUTO FARM V2.5 - SAFE LOADER")
+print("  BLOX FRUITS AUTO FARM V2.5 - UNIVERSAL LOADER")
 print("=" .. string.rep("=", 58) .. "=")
 print("")
 
 -- =================================================================
--- SAFE MODULE LOADER (check từng bước)
+-- UNIVERSAL HTTP GET (hỗ trợ tất cả executor)
+-- =================================================================
+
+local function httpGet(url)
+    print("[HTTP] Attempting to fetch:  " .. url)
+    
+    -- Method 1: syn.request (Synapse X)
+    if syn and syn. request then
+        print("[HTTP] Using syn.request...")
+        local ok, res = pcall(function()
+            return syn.request({
+                Url = url,
+                Method = "GET"
+            })
+        end)
+        
+        if ok and res and res.Body then
+            print("[HTTP] [OK] syn.request success (" .. #res.Body .. " bytes)")
+            return res.Body
+        end
+        print("[HTTP] syn.request failed")
+    end
+    
+    -- Method 2: http_request (KRNL, Electron)
+    if http_request then
+        print("[HTTP] Using http_request...")
+        local ok, res = pcall(function()
+            return http_request({
+                Url = url,
+                Method = "GET"
+            })
+        end)
+        
+        if ok and res and res. Body then
+            print("[HTTP] [OK] http_request success (" .. #res.Body .. " bytes)")
+            return res.Body
+        end
+        print("[HTTP] http_request failed")
+    end
+    
+    -- Method 3: request (Script-Ware, Fluxus)
+    if request then
+        print("[HTTP] Using request...")
+        local ok, res = pcall(function()
+            return request({
+                Url = url,
+                Method = "GET"
+            })
+        end)
+        
+        if ok and res and res.Body then
+            print("[HTTP] [OK] request success (" .. #res.Body .. " bytes)")
+            return res.Body
+        end
+        print("[HTTP] request failed")
+    end
+    
+    -- Method 4: game:HttpGet (Roblox default, nếu được bật)
+    if game and game.HttpGet then
+        print("[HTTP] Using game:HttpGet...")
+        local ok, res = pcall(function()
+            return game:HttpGet(url)
+        end)
+        
+        if ok and res and type(res) == "string" and #res > 0 then
+            print("[HTTP] [OK] game:HttpGet success (" .. #res .. " bytes)")
+            return res
+        end
+        print("[HTTP] game:HttpGet failed")
+    end
+    
+    -- Method 5: HttpService (fallback)
+    local HttpService = game:GetService("HttpService")
+    if HttpService and HttpService.GetAsync then
+        print("[HTTP] Using HttpService:GetAsync...")
+        local ok, res = pcall(function()
+            return HttpService:GetAsync(url)
+        end)
+        
+        if ok and res and type(res) == "string" and #res > 0 then
+            print("[HTTP] [OK] HttpService success (" .. #res .. " bytes)")
+            return res
+        end
+        print("[HTTP] HttpService failed")
+    end
+    
+    warn("[HTTP] [ERROR] ALL HTTP METHODS FAILED!")
+    warn("[HTTP] Your executor may not support HTTP requests")
+    warn("[HTTP] Try:")
+    warn("  1. Enable HTTP in executor settings")
+    warn("  2. Use a different executor")
+    warn("  3. Check internet connection")
+    
+    return nil
+end
+
+-- =================================================================
+-- SAFE MODULE LOADER
 -- =================================================================
 
 local function loadModule(moduleName, url)
+    print("\n" .. string.rep("-", 60))
     print("[" .. moduleName .. "] Loading...")
     print("[" .. moduleName .. "] URL: " .. url)
+    print(string.rep("-", 60))
     
-    -- Step 1: HttpGet
-    local source
-    local ok, err = pcall(function()
-        source = game:HttpGet(url)
-    end)
-    
-    if not ok then
-        error("[" .. moduleName .. "] HttpGet failed: " .. tostring(err))
-    end
+    -- Step 1: HTTP GET
+    local source = httpGet(url)
     
     if not source then
         error("[" .. moduleName .. "] HttpGet returned nil")
     end
     
     if type(source) ~= "string" then
-        error("[" ..  moduleName .. "] HttpGet returned " .. type(source) .. " instead of string")
+        error("[" .. moduleName .. "] HttpGet returned " .. type(source) .. " instead of string")
     end
     
     if #source < 10 then
-        error("[" .. moduleName .. "] HttpGet returned empty or too short (" .. #source .. " bytes)")
+        error("[" .. moduleName ..  "] HttpGet returned too short (" .. #source .. " bytes)")
     end
     
-    print("[" .. moduleName .. "] Downloaded:  " .. #source .. " bytes")
+    print("[" .. moduleName .. "] Downloaded: " .. #source .. " bytes")
     
     -- Step 2: loadstring
-    local loadFunc
-    ok, err = pcall(function()
-        loadFunc = loadstring(source)
-    end)
-    
-    if not ok then
-        error("[" .. moduleName .. "] loadstring failed: " .. tostring(err))
-    end
+    local loadFunc, loadErr = loadstring(source)
     
     if not loadFunc then
-        error("[" .. moduleName .. "] loadstring returned nil")
-    end
-    
-    if type(loadFunc) ~= "function" then
-        error("[" .. moduleName .. "] loadstring returned " .. type(loadFunc) .. " instead of function")
+        error("[" .. moduleName ..  "] loadstring failed: " ..  tostring(loadErr))
     end
     
     print("[" .. moduleName .. "] Compiled successfully")
     
     -- Step 3: Execute
-    local result
-    ok, err = pcall(function()
-        result = loadFunc()
-    end)
+    local ok, result = pcall(loadFunc)
     
     if not ok then
-        error("[" ..  moduleName .. "] Execution failed: " .. tostring(err))
+        error("[" .. moduleName .. "] Execution failed: " .. tostring(result))
     end
     
     if not result then
@@ -77,7 +155,7 @@ local function loadModule(moduleName, url)
         error("[" ..  moduleName .. "] Module returned " .. type(result) .. " instead of table")
     end
     
-    print("[" .. moduleName .. "] [OK] Loaded successfully (type: table)")
+    print("[" .. moduleName .. "] [OK] Loaded successfully")
     return result
 end
 
@@ -86,11 +164,49 @@ end
 -- =================================================================
 
 local BASE_URL = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/"
-local CACHE_BUSTER = "?v=" .. tick()
+local CACHE_BUSTER = "?v=" .. tostring(tick())
 
 local CONFIG_URL = BASE_URL .. "CONFIG. LUA" .. CACHE_BUSTER
 local CORE_URL = BASE_URL .. "CORE.LUA" .. CACHE_BUSTER
 local GUI_URL = BASE_URL .. "GUI.LUA" .. CACHE_BUSTER
+
+-- =================================================================
+-- DETECT EXECUTOR
+-- =================================================================
+
+print("\n" .. string.rep("=", 60))
+print("EXECUTOR DETECTION")
+print(string.rep("=", 60))
+
+local executorName = "Unknown"
+local httpMethod = "None"
+
+if syn and syn.request then
+    executorName = "Synapse X"
+    httpMethod = "syn.request"
+elseif KRNL_LOADED then
+    executorName = "KRNL"
+    httpMethod = "http_request"
+elseif ELECTRON then
+    executorName = "Electron"
+    httpMethod = "http_request"
+elseif Fluxus then
+    executorName = "Fluxus"
+    httpMethod = "request"
+elseif http_request then
+    executorName = "Generic (http_request)"
+    httpMethod = "http_request"
+elseif request then
+    executorName = "Generic (request)"
+    httpMethod = "request"
+elseif game. HttpGet then
+    executorName = "Roblox Default"
+    httpMethod = "game:HttpGet"
+end
+
+print("Executor: " .. executorName)
+print("HTTP Method: " .. httpMethod)
+print(string.rep("=", 60))
 
 -- =================================================================
 -- LOAD MODULES
@@ -101,9 +217,7 @@ local loadSuccess = true
 local loadErrors = {}
 
 -- Load CONFIG
-print("\n" .. string.rep("-", 60))
-print("[1/3] LOADING CONFIG...")
-print(string.rep("-", 60))
+print("\n[1/3] LOADING CONFIG...")
 
 local ok, err = pcall(function()
     Config = loadModule("CONFIG", CONFIG_URL)
@@ -117,10 +231,8 @@ if not ok then
 end
 
 -- Load CORE (only if CONFIG loaded)
-if loadSuccess then
-    print("\n" .. string.rep("-", 60))
-    print("[2/3] LOADING CORE...")
-    print(string.rep("-", 60))
+if loadSuccess and Config then
+    print("\n[2/3] LOADING CORE...")
     
     ok, err = pcall(function()
         Core = loadModule("CORE", CORE_URL)
@@ -134,7 +246,7 @@ if loadSuccess then
     end
 end
 
--- Initialize console (only if both loaded)
+-- Initialize console
 if loadSuccess and Config and Core then
     print("\n" .. string.rep("-", 60))
     print("INITIALIZING CONSOLE...")
@@ -152,13 +264,13 @@ if loadSuccess and Config and Core then
 end
 
 -- Player info
-if loadSuccess then
-    local player = game. Players.LocalPlayer
+if loadSuccess and Config and Core then
+    local player = game.Players.LocalPlayer
     
-    print("\n" .. string.rep("=", 60))
+    print("\n" ..  string.rep("=", 60))
     print("PLAYER INFO")
     print(string.rep("=", 60))
-    print("Player: " .. player.Name)
+    print("Player:  " .. player.Name)
     
     local levelOk, level = pcall(function()
         return player.Data.Level. Value
@@ -172,11 +284,9 @@ if loadSuccess then
     print(string.rep("=", 60))
 end
 
--- Load GUI (only if CONFIG + CORE loaded)
-if loadSuccess then
-    print("\n" .. string.rep("-", 60))
-    print("[3/3] LOADING GUI...")
-    print(string.rep("-", 60))
+-- Load GUI
+if loadSuccess and Config and Core then
+    print("\n[3/3] LOADING GUI...")
     
     ok, err = pcall(function()
         GUI = loadModule("GUI", GUI_URL)
@@ -186,7 +296,7 @@ if loadSuccess then
         warn("[WARN] Failed to load GUI (non-critical)")
         warn("Error: " .. tostring(err))
         
-        -- Create fallback GUI
+        -- Fallback GUI
         GUI = {}
         function GUI.create(Config, Core)
             warn("[WARN] Using fallback GUI - no UI available")
@@ -200,19 +310,18 @@ if loadSuccess then
     end
 end
 
--- Verify GUI has create method
+-- Verify GUI structure
 if GUI and type(GUI) == "table" then
     if not GUI.create or type(GUI.create) ~= "function" then
-        warn("[WARN] GUI.create is not a function!")
+        warn("[WARN] GUI. create is missing or not a function!")
         
-        -- Create dummy create function
         GUI.create = function(Config, Core)
-            warn("[WARN] Dummy GUI.create called")
+            warn("[WARN] Dummy GUI. create called")
         end
     end
 end
 
--- Create GUI (only if all modules loaded)
+-- Create GUI
 if loadSuccess and Config and Core and GUI then
     print("\n" .. string.rep("-", 60))
     print("CREATING GUI...")
@@ -256,22 +365,24 @@ else
     end
     print("")
     print("TROUBLESHOOTING:")
-    print("  1. Check internet connection")
-    print("  2. Verify GitHub files exist:")
+    print("  1. Check executor supports HTTP requests")
+    print("  2. Enable HTTP in executor settings")
+    print("  3. Check internet connection")
+    print("  4. Try a different executor")
+    print("  5. Verify GitHub files exist:")
     print("     " .. BASE_URL)
-    print("  3. Check executor supports HttpGet and loadstring")
-    print("  4. Try again in a few minutes (rate limit)")
     print("")
     return
 end
 
+print("Executor: " .. executorName)
 print("GitHub: longgamer998-code/SourceBloxFruit")
 print("Date: " .. os.date("%Y-%m-%d %H:%M:%S"))
 print("Ready to farm!")
 print(string.rep("=", 60))
 
 -- =================================================================
--- EXPOSE GLOBALS (only if loaded successfully)
+-- EXPOSE GLOBALS
 -- =================================================================
 
 if loadSuccess and Config and Core then
@@ -327,7 +438,7 @@ if loadSuccess and Config and Core then
             end)
             print("Level: " .. (levelOk and tostring(level) or "?"))
             
-            print("Weapon: " .. (Config.Settings.SelectedWeapon or "?"))
+            print("Weapon: " .. (Config.Settings. SelectedWeapon or "? "))
             print("Quest: " .. (Config.Settings. CurrentQuest or "?"))
             print("Kills: " .. tostring(Config.Settings.MobsKilled or 0))
             print("Quests: " .. tostring(Config.Settings.QuestsCompleted or 0))
@@ -345,7 +456,7 @@ if loadSuccess and Config and Core then
             print(string.rep("=", 40))
             
             local count = 0
-            for location, quests in pairs(Config. QuestData or {}) do
+            for location, quests in pairs(Config.QuestData or {}) do
                 print("\n[" .. location .. "]")
                 for i, quest in ipairs(quests) do
                     print("  " .. i .. ". " ..  quest.Name ..  " (Lvl " .. quest.LevelReq .. ")")
@@ -370,14 +481,28 @@ if loadSuccess and Config and Core then
             
             if Core then
                 print("  Core.startAutoFarm: " .. (Core.startAutoFarm and "OK" or "MISSING"))
-                print("  Core.getPlayerLevel: " .. (Core.getPlayerLevel and "OK" or "MISSING"))
+                print("  Core.getPlayerLevel: " .. (Core. getPlayerLevel and "OK" or "MISSING"))
             end
             
             if GUI and type(GUI) == "table" then
-                print("  GUI.create: " .. (GUI.create and "OK" or "MISSING"))
+                print("  GUI.create: " ..  (GUI.create and "OK" or "MISSING"))
             end
             
             print("")
+        end,
+        
+        TestHTTP = function()
+            print("\n[TEST] Testing HTTP methods...")
+            
+            local testUrl = "https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CONFIG.LUA"
+            local result = httpGet(testUrl)
+            
+            if result then
+                print("[OK] HTTP working!  Downloaded " .. #result .. " bytes")
+            else
+                warn("[ERROR] HTTP not working!")
+                warn("Your executor may not support HTTP requests")
+            end
         end
     }
     
@@ -387,5 +512,6 @@ if loadSuccess and Config and Core then
     print("  BloxFruitsAutoFarm.Status()      -- Show status")
     print("  BloxFruitsAutoFarm. DebugQuests() -- Show quests")
     print("  BloxFruitsAutoFarm. TestModules() -- Test modules")
+    print("  BloxFruitsAutoFarm.TestHTTP()    -- Test HTTP")
     print("")
 end
