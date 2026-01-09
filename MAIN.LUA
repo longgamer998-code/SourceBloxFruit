@@ -1,40 +1,200 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  MAIN. LUA - BLOX FRUITS AUTO FARM V2. 5 FINAL             ║
--- ╚══════════════════════════════════════════��═══════════════╝
+-- ║  BLOX FRUITS AUTO FARM V2.5 - ALL IN ONE                  ║
+-- ║  Load trực tiếp, không cần file riêng                     ║
+-- ╚══════════════════════════════════════════════════════════╝
 
-print("🔄 Loading Blox Fruits Auto Farm...")
+print("🔄 Loading Blox Fruits Auto Farm V2.5...")
 
--- Load modules
-local Config = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CONFIG.LUA"))()
-local Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA"))()
-local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/GUI.LUA"))()
+-- ═══════════════════════════════════════════════════════════
+-- CONFIG
+-- ═══════════════════════════════════════════════════════════
 
--- Init
+local Config = {
+    Settings = {
+        Enabled = false,
+        FastAttack = false,
+        AutoQuest = true,
+        AutoHaki = true,
+        AutoEquipWeapon = true,
+        SafeTeleport = true,
+        TweenSpeed = 300,
+        FarmDistance = 6,
+        SelectedWeapon = "Melee",
+        CurrentQuest = "None",
+        MobsKilled = 0,
+        QuestsCompleted = 0,
+    },
+    
+    ConsoleLog = {},
+    MAX_LOGS = 200,
+    
+    CombatDebug = {
+        AttackAttempts = 0,
+        SuccessfulHits = 0,
+        WeaponEquipFails = 0,
+        ClickAttempts = 0,
+        LastMobHealth = 0,
+        HealthChanges = 0,
+        PositionErrors = 0,
+        LastAttackTime = 0,
+    },
+    
+    QuestData = {
+        ["MarineQuest"] = {
+            {Name = "Trainees", LevelReq = 0, Task = {["Trainee"] = 5}},
+        }
+    },
+    
+    QuestLocations = {
+        ["MarineQuest"] = Vector3.new(-2709, 73, 2062)
+    },
+    
+    IslandLocations = {
+        {name = "Starter Island", pos = Vector3.new(1071, 16, 1426)},
+        {name = "Marine Starter", pos = Vector3.new(-2709, 73, 2062)},
+    }
+}
+
+print("✅ Config loaded")
+
+-- ═══════════════════════════════════════════════════════════
+-- LOAD CORE. LUA
+-- ═══════════════════════════════════════════════════════════
+
+print("🔄 Loading CORE...")
+
+local Core
+local coreSuccess, coreError = pcall(function()
+    Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA"))()
+end)
+
+if not coreSuccess then
+    warn("❌ Failed to load CORE from GitHub!")
+    warn("Error: " .. tostring(coreError))
+    warn("⚠️ Script cannot run without CORE. LUA")
+    warn("📝 Please make sure CORE.LUA is uploaded to:")
+    warn("   https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA")
+    return
+end
+
+print("✅ CORE loaded")
+
+-- ═══════════════════════════════════════════════════════════
+-- INIT CONSOLE
+-- ═══════════════════════════════════════════════════════════
+
 Core.initConsole(Config)
 print("✅ Console ready")
 
--- Player info
+-- ═══════════════════════════════════════════════════════════
+-- PLAYER INFO
+-- ═══════════════════════════════════════════════════════════
+
+local player = game.Players.LocalPlayer
+
 print("\n============================================================")
-print("👤 Player:  " .. game.Players.LocalPlayer.Name)
-print("⭐ Level: " .. tostring(game.Players.LocalPlayer.Data.Level. Value))
-print("💰 Beli: " .. tostring(game. Players.LocalPlayer.Data. Beli.Value))
+print("👤 Player:  " .. player.Name)
+
+local levelSuccess, level = pcall(function()
+    return player. Data.Level. Value
+end)
+print("⭐ Level: " .. (levelSuccess and tostring(level) or "?"))
+
+local beliSuccess, beli = pcall(function()
+    return player.Data.Beli.Value
+end)
+print("💰 Beli:  " .. (beliSuccess and tostring(beli) or "?"))
+
 print("============================================================\n")
 
--- Create GUI
-print("🎨 Creating GUI...")
-GUI.create(Config, Core)
+-- ═══════════════════════════════════════════════════════════
+-- LOAD GUI
+-- ═══════════════════════════════════════════════════════════
 
-print("\n🔫 Detecting weapons...")
+print("🎨 Loading GUI...")
+
+local GUI
+local guiSuccess, guiError = pcall(function()
+    GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/GUI.LUA"))()
+end)
+
+if not guiSuccess then
+    warn("❌ Failed to load GUI from GitHub!")
+    warn("Error: " ..  tostring(guiError))
+    warn("⚠️ Trying fallback GUI...")
+    
+    -- FALLBACK GUI (simple version)
+    GUI = {}
+    function GUI.create(Config, Core)
+        warn("⚠️ Using fallback GUI (simple version)")
+        warn("📝 Commands:")
+        warn("   Config.Settings.Enabled = true  -- Start Auto Farm")
+        warn("   Config.Settings. Enabled = false -- Stop Auto Farm")
+        warn("   Core.startAutoFarm(Config)     -- Manual start")
+        warn("   Core.stopAutoFarm()             -- Manual stop")
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- CREATE GUI
+-- ═══════════════════════════════════════════════════════════
+
+local createSuccess, createError = pcall(function()
+    GUI.create(Config, Core)
+end)
+
+if not createSuccess then
+    warn("❌ Failed to create GUI!")
+    warn("Error: " ..  tostring(createError))
+    warn("⚠️ You can still use commands:")
+    warn("   Config. Settings.Enabled = true")
+    warn("   Core.startAutoFarm(Config)")
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SUCCESS
+-- ═══════════════════════════════════════════════════════════
 
 print("\n============================================================")
 print("✅ SCRIPT LOADED SUCCESSFULLY!")
 print("============================================================")
 print("📖 How to use:")
-print("  1. Select weapon")
+print("  1. Select weapon in GUI")
 print("  2. Toggle 'Auto Farm' to start")
 print("  3. Check Console tab for stats")
-print("============================================================\n")
-
-print("🌐 https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/")
+print("============================================================")
+print("🌐 GitHub: longgamer998-code/SourceBloxFruit")
 print("📅 " .. os.date("%Y-%m-%d %H:%M:%S"))
 print("✨ Ready!")
+print("============================================================\n")
+
+-- ═══════════════════════════════════════════════════════════
+-- EXPOSE GLOBALS (for manual control)
+-- ════��══════════════════════════════════════════════════════
+
+getgenv().BloxFruitsAutoFarm = {
+    Config = Config,
+    Core = Core,
+    Start = function()
+        Config.Settings.Enabled = true
+        return Core. startAutoFarm(Config)
+    end,
+    Stop = function()
+        Config.Settings. Enabled = false
+        Core.stopAutoFarm()
+    end,
+    Status = function()
+        print("═══════════════════════════════════")
+        print("Status: " .. (Core.isAutoFarmRunning() and "RUNNING" or "STOPPED"))
+        print("Thread: " .. Core.getAutoFarmStatus())
+        print("Enabled: " .. tostring(Config.Settings.Enabled))
+        print("Mobs Killed: " .. tostring(Config.Settings.MobsKilled))
+        print("Quests Done: " .. tostring(Config.Settings.QuestsCompleted))
+        print("═══════════════════════════════════")
+    end
+}
+
+print("📌 Manual commands available:")
+print("   BloxFruitsAutoFarm. Start()   -- Start farming")
+print("   BloxFruitsAutoFarm.Stop()    -- Stop farming")
+print("   BloxFruitsAutoFarm.Status()  -- Check status")
