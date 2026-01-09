@@ -1,79 +1,46 @@
 -- ╔══════════════════════════════════════════════════════════╗
--- ║  BLOX FRUITS AUTO FARM V2.5 - ALL IN ONE                  ║
--- ║  Load trực tiếp, không cần file riêng                     ║
--- ╚══════════════════════════════════════════════════════════╝
+-- ║  BLOX FRUITS AUTO FARM V2.5 - LOAD TỪ GITHUB              ║
+-- ╚════════════════════════════════════════════════════════���═╝
 
 print("🔄 Loading Blox Fruits Auto Farm V2.5...")
 
 -- ═══════════════════════════════════════════════════════════
--- CONFIG
+-- LOAD CONFIG
 -- ═══════════════════════════════════════════════════════════
 
-local Config = {
-    Settings = {
-        Enabled = false,
-        FastAttack = false,
-        AutoQuest = true,
-        AutoHaki = true,
-        AutoEquipWeapon = true,
-        SafeTeleport = true,
-        TweenSpeed = 300,
-        FarmDistance = 6,
-        SelectedWeapon = "Melee",
-        CurrentQuest = "None",
-        MobsKilled = 0,
-        QuestsCompleted = 0,
-    },
-    
-    ConsoleLog = {},
-    MAX_LOGS = 200,
-    
-    CombatDebug = {
-        AttackAttempts = 0,
-        SuccessfulHits = 0,
-        WeaponEquipFails = 0,
-        ClickAttempts = 0,
-        LastMobHealth = 0,
-        HealthChanges = 0,
-        PositionErrors = 0,
-        LastAttackTime = 0,
-    },
-    
-    QuestData = {
-        ["MarineQuest"] = {
-            {Name = "Trainees", LevelReq = 0, Task = {["Trainee"] = 5}},
-        }
-    },
-    
-    QuestLocations = {
-        ["MarineQuest"] = Vector3.new(-2709, 73, 2062)
-    },
-    
-    IslandLocations = {
-        {name = "Starter Island", pos = Vector3.new(1071, 16, 1426)},
-        {name = "Marine Starter", pos = Vector3.new(-2709, 73, 2062)},
-    }
-}
+print("🔄 Loading CONFIG...")
 
-print("✅ Config loaded")
+local Config
+local configSuccess, configError = pcall(function()
+    Config = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CONFIG.LUA"))()
+end)
+
+if not configSuccess then
+    warn("❌ Failed to load CONFIG from GitHub!")
+    warn("Error: " .. tostring(configError))
+    warn("⚠️ Script cannot run without CONFIG.LUA")
+    warn("📝 Please make sure CONFIG.LUA is uploaded to:")
+    warn("   https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CONFIG.LUA")
+    return
+end
+
+print("✅ CONFIG loaded")
 
 -- ═══════════════════════════════════════════════════════════
--- LOAD CORE. LUA
+-- LOAD CORE
 -- ═══════════════════════════════════════════════════════════
 
 print("🔄 Loading CORE...")
 
 local Core
 local coreSuccess, coreError = pcall(function()
-    Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA"))()
+    Core = loadstring(game: HttpGet("https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA"))()
 end)
 
 if not coreSuccess then
     warn("❌ Failed to load CORE from GitHub!")
     warn("Error: " .. tostring(coreError))
-    warn("⚠️ Script cannot run without CORE. LUA")
-    warn("📝 Please make sure CORE.LUA is uploaded to:")
-    warn("   https://raw.githubusercontent.com/longgamer998-code/SourceBloxFruit/main/CORE.LUA")
+    warn("⚠️ Script cannot run without CORE.LUA")
     return
 end
 
@@ -96,14 +63,14 @@ print("\n============================================================")
 print("👤 Player:  " .. player.Name)
 
 local levelSuccess, level = pcall(function()
-    return player. Data.Level. Value
+    return player.Data.Level.Value
 end)
-print("⭐ Level: " .. (levelSuccess and tostring(level) or "?"))
+print("⭐ Level:  " .. (levelSuccess and tostring(level) or "?"))
 
 local beliSuccess, beli = pcall(function()
     return player.Data.Beli.Value
 end)
-print("💰 Beli:  " .. (beliSuccess and tostring(beli) or "?"))
+print("💰 Beli: " .. (beliSuccess and tostring(beli) or "?"))
 
 print("============================================================\n")
 
@@ -120,18 +87,17 @@ end)
 
 if not guiSuccess then
     warn("❌ Failed to load GUI from GitHub!")
-    warn("Error: " ..  tostring(guiError))
+    warn("Error: " .. tostring(guiError))
     warn("⚠️ Trying fallback GUI...")
     
-    -- FALLBACK GUI (simple version)
+    -- FALLBACK GUI
     GUI = {}
     function GUI.create(Config, Core)
         warn("⚠️ Using fallback GUI (simple version)")
-        warn("📝 Commands:")
-        warn("   Config.Settings.Enabled = true  -- Start Auto Farm")
-        warn("   Config.Settings. Enabled = false -- Stop Auto Farm")
-        warn("   Core.startAutoFarm(Config)     -- Manual start")
-        warn("   Core.stopAutoFarm()             -- Manual stop")
+        warn("📝 Manual commands:")
+        warn("   BloxFruitsAutoFarm. Start()")
+        warn("   BloxFruitsAutoFarm.Stop()")
+        warn("   BloxFruitsAutoFarm. Status()")
     end
 end
 
@@ -145,13 +111,11 @@ end)
 
 if not createSuccess then
     warn("❌ Failed to create GUI!")
-    warn("Error: " ..  tostring(createError))
-    warn("⚠️ You can still use commands:")
-    warn("   Config. Settings.Enabled = true")
-    warn("   Core.startAutoFarm(Config)")
+    warn("Error: " .. tostring(createError))
+    warn("⚠️ You can still use manual commands")
 end
 
--- ═══════════════════════════════════════════════════════════
+-- ═══════════════════════════════════════════════════��═══════
 -- SUCCESS
 -- ═══════════════════════════════════════════════════════════
 
@@ -164,37 +128,54 @@ print("  2. Toggle 'Auto Farm' to start")
 print("  3. Check Console tab for stats")
 print("============================================================")
 print("🌐 GitHub: longgamer998-code/SourceBloxFruit")
-print("📅 " .. os.date("%Y-%m-%d %H:%M:%S"))
+print("📅 " ..  os.date("%Y-%m-%d %H:%M:%S"))
 print("✨ Ready!")
 print("============================================================\n")
 
 -- ═══════════════════════════════════════════════════════════
--- EXPOSE GLOBALS (for manual control)
--- ════��══════════════════════════════════════════════════════
+-- EXPOSE GLOBALS
+-- ═══════════════════════════════════════════════════════════
 
 getgenv().BloxFruitsAutoFarm = {
     Config = Config,
     Core = Core,
     Start = function()
         Config.Settings.Enabled = true
-        return Core. startAutoFarm(Config)
+        return Core.startAutoFarm(Config)
     end,
     Stop = function()
-        Config.Settings. Enabled = false
+        Config.Settings.Enabled = false
         Core.stopAutoFarm()
     end,
     Status = function()
+        print("\n═══════════════════════════════════")
+        print("📊 AUTO FARM STATUS")
         print("═══════════════════════════════════")
-        print("Status: " .. (Core.isAutoFarmRunning() and "RUNNING" or "STOPPED"))
+        print("Status: " .. (Core.isAutoFarmRunning() and "🟢 RUNNING" or "🔴 STOPPED"))
         print("Thread: " .. Core.getAutoFarmStatus())
-        print("Enabled: " .. tostring(Config.Settings.Enabled))
-        print("Mobs Killed: " .. tostring(Config.Settings.MobsKilled))
+        print("Enabled: " ..  tostring(Config.Settings. Enabled))
+        print("Level: " .. tostring(Core. getPlayerLevel()))
+        print("Mobs Killed: " ..  tostring(Config.Settings.MobsKilled))
         print("Quests Done: " .. tostring(Config.Settings.QuestsCompleted))
+        print("Current Quest: " .. Config.Settings.CurrentQuest)
+        print("═══════════════════════════════════\n")
+    end,
+    DebugQuests = function()
+        print("\n═══════════════════════════════════")
+        print("📋 AVAILABLE QUESTS")
         print("═══════════════════════════════════")
+        for location, quests in pairs(Config.QuestData) do
+            print("\n📍 " .. location ..  ":")
+            for i, quest in ipairs(quests) do
+                print("  " .. i .. ". " .. quest.Name ..  " (Lvl " .. quest.LevelReq .. ")")
+            end
+        end
+        print("═══════════════════════════════════\n")
     end
 }
 
-print("📌 Manual commands available:")
-print("   BloxFruitsAutoFarm. Start()   -- Start farming")
-print("   BloxFruitsAutoFarm.Stop()    -- Stop farming")
-print("   BloxFruitsAutoFarm.Status()  -- Check status")
+print("📌 Manual commands:")
+print("   BloxFruitsAutoFarm.Start()        -- Start farming")
+print("   BloxFruitsAutoFarm.Stop()         -- Stop farming")
+print("   BloxFruitsAutoFarm.Status()       -- Check status")
+print("   BloxFruitsAutoFarm.DebugQuests()  -- Show all quests")
